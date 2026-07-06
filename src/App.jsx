@@ -69,6 +69,7 @@ const T = {
     map:"地图", browse:"浏览", post:"发布", mine:"我的", msgs:"消息",
     all:"全部", swappable:"可互换",
     available:"可换国家",
+    optional:"选填",
     postTitle:"发布换贴信息",
     nickname:"昵称", nickPh:"怎么称呼你",
     country:"国家",
@@ -78,12 +79,6 @@ const T = {
     swapAreasHint:"如：Downtown、North York、Markham",
     iHave:"我有的冰箱贴", pickMulti:"（可多选）",
     iWant:"想换的冰箱贴", pickMany:"（可多选）",
-    contactSection:"联系方式（选填）",
-    phoneLbl:"电话", phonePh:"手机号码",
-    whatsappLbl:"WhatsApp", whatsappPh:"WhatsApp 号码",
-    instagramLbl:"Instagram", instagramPh:"IG 用户名",
-    wechatLbl:"微信", wechatPh:"微信号",
-    contactNote:"联系方式仅在对方查看你的帖子时可见",
     publish:"发布上线", publishing:"发布中...",
     myInfo:"我的信息", offline:"下线 / 重新发布",
     have:"有", want:"想换",
@@ -93,9 +88,6 @@ const T = {
     noMatchYet:"暂时不匹配，可联系对方看看",
     postFirst:"发布你的信息后可查看匹配",
     noResults:"暂无匹配的信息",
-    contactTitle:"联系",
-    meetTip:"建议约在附近的喜茶门店见面交换",
-    gotIt:"知道了",
     postCta:"发布你的冰箱贴",
     postCtaSub:"告诉大家你有什么、想换什么，系统自动匹配附近的人",
     goPost:"去发布",
@@ -104,7 +96,6 @@ const T = {
     chatPh:"输入消息...", send:"发送",
     noChats:"暂无消息", noChatsDesc:"和其他人交换冰箱贴时会在这里显示消息",
     me:"我",
-    viewContact:"查看联系方式",
     selectCity:"选择城市",
     allCities:"全部城市",
     areas:"地区",
@@ -123,6 +114,7 @@ const T = {
     map:"Map", browse:"Browse", post:"Post", mine:"Mine", msgs:"Chat",
     all:"All", swappable:"Swappable",
     available:"Available",
+    optional:"optional",
     postTitle:"Post your magnet",
     nickname:"Nickname", nickPh:"What should we call you?",
     country:"Country",
@@ -132,12 +124,6 @@ const T = {
     swapAreasHint:"e.g. Downtown, North York, Markham",
     iHave:"I have", pickMulti:"(pick multiple)",
     iWant:"I want", pickMany:"(pick multiple)",
-    contactSection:"Contact (optional)",
-    phoneLbl:"Phone", phonePh:"Phone number",
-    whatsappLbl:"WhatsApp", whatsappPh:"WhatsApp number",
-    instagramLbl:"Instagram", instagramPh:"IG username",
-    wechatLbl:"WeChat", wechatPh:"WeChat ID",
-    contactNote:"Contact info is visible when others view your listing",
     publish:"Go live", publishing:"Posting...",
     myInfo:"My listing", offline:"Go offline / Re-post",
     have:"Have", want:"Want",
@@ -147,9 +133,6 @@ const T = {
     noMatchYet:"No match yet — you can still reach out",
     postFirst:"Post your listing to see matches",
     noResults:"No listings found",
-    contactTitle:"Contact",
-    meetTip:"Meet at a nearby Heytea store for safety.",
-    gotIt:"Got it",
     postCta:"Post your magnet",
     postCtaSub:"Tell everyone what you have and want — we'll match you nearby",
     goPost:"Post now",
@@ -158,7 +141,6 @@ const T = {
     chatPh:"Type a message...", send:"Send",
     noChats:"No messages yet", noChatsDesc:"Messages will appear here when you chat with other swappers",
     me:"Me",
-    viewContact:"View contact info",
     selectCity:"Select city",
     allCities:"All cities",
     areas:"Areas",
@@ -775,12 +757,11 @@ function AddressInput({ value, country, onChange, onPlaceSelect, placeholder, st
 }
 
 // ── Listing Card ──
-function ListingCard({ listing: l, myListings = [], onContact, onMessage, expanded, onToggle, lang, t }) {
+function ListingCard({ listing: l, myListings = [], onMessage, expanded, onToggle, lang, t }) {
   const isMine = myListings.some(m => m.id === l.id);
   const matched = !isMine && isMatchAny(myListings, l);
   const haveArr = toArr(l.have);
   const firstColor = mColor(haveArr[0]);
-  const hasContact = l.phone || l.whatsapp || l.instagram || l.wechat;
   return (
     <div onClick={onToggle} style={{
       padding: "12px 14px",
@@ -846,46 +827,10 @@ function ListingCard({ listing: l, myListings = [], onContact, onMessage, expand
                 background: matched ? "#10b981" : "#333", color: "#fff",
                 fontWeight: 600, fontSize: 13, cursor: "pointer",
               }}>{t.msgBtn}</button>
-              {hasContact && (
-                <button onClick={e => { e.stopPropagation(); onContact(l); }} style={{
-                  flex: 1, padding: "10px 0", border: "1.5px solid #ddd", borderRadius: 10,
-                  background: "transparent", color: "#333",
-                  fontWeight: 500, fontSize: 13, cursor: "pointer",
-                }}>{t.viewContact}</button>
-              )}
             </div>
           )}
         </div>
       )}
-    </div>
-  );
-}
-
-// ── Contact Modal ──
-function ContactModal({ listing, onClose, t }) {
-  if (!listing) return null;
-  const contacts = [
-    listing.phone && { icon: "📞", label: t.phoneLbl, value: listing.phone },
-    listing.whatsapp && { icon: "💬", label: t.whatsappLbl, value: listing.whatsapp },
-    listing.instagram && { icon: "📸", label: t.instagramLbl, value: `@${listing.instagram.replace(/^@/, "")}` },
-    listing.wechat && { icon: "🟢", label: t.wechatLbl, value: listing.wechat },
-  ].filter(Boolean);
-  if (contacts.length === 0) return null;
-  return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.4)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 100 }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 440, background: "#fff", borderRadius: "18px 18px 0 0", padding: "20px 18px 28px" }}>
-        <div style={{ width: 36, height: 4, borderRadius: 2, background: "#ddd", margin: "0 auto 14px" }} />
-        <div style={{ fontSize: 16, fontWeight: 600 }}>{t.contactTitle} {listing.nickname}</div>
-        <div style={{ fontSize: 12, color: "#888", marginBottom: 14 }}>{listing.address}</div>
-        {contacts.map((c, i) => (
-          <div key={i} style={{ padding: 14, borderRadius: 12, background: "#f9f9f5", border: "1px solid #eee", marginBottom: 8 }}>
-            <div style={{ fontSize: 11, color: "#888", marginBottom: 3 }}>{c.icon} {c.label}</div>
-            <div style={{ fontSize: 16, fontWeight: 600, letterSpacing: .3 }}>{c.value}</div>
-          </div>
-        ))}
-        <div style={{ fontSize: 11, color: "#999", marginBottom: 14, lineHeight: 1.5 }}>{t.meetTip}</div>
-        <button onClick={onClose} style={{ width: "100%", padding: "11px 0", border: "none", borderRadius: 12, background: "#333", color: "#fff", fontWeight: 600, fontSize: 14, cursor: "pointer" }}>{t.gotIt}</button>
-      </div>
     </div>
   );
 }
@@ -1106,7 +1051,6 @@ export default function App() {
   const [tab, setTab] = useState("map");
   const [listings, setListings] = useState([]);
   const [expandedId, setExpandedId] = useState(null);
-  const [contactModal, setContactModal] = useState(null);
   const [filterMagnet, setFilterMagnet] = useState("");
   const [loading, setLoading] = useState(true);
   const [selectedCity, setSelectedCity] = useState(() => localStorage.getItem("heytea-city") || "toronto");
@@ -1133,8 +1077,6 @@ export default function App() {
   const [fHave, setFHave] = useState([]);
   const [fWant, setFWant] = useState([]);
   const [fAreas, setFAreas] = useState([]);
-  const [fContactType, setFContactType] = useState("phone");
-  const [fContactValue, setFContactValue] = useState("");
   const [posting, setPosting] = useState(false);
 
   const ownerToken = useMemo(() => getOwnerToken(), []);
@@ -1143,7 +1085,6 @@ export default function App() {
     const defaultCountry = countryFromCityId(selectedCity);
     setFn(""); setFCountry(defaultCountry); setFCity(""); setFAddr(""); setFLat(null); setFLng(null);
     setFHave([]); setFWant([]); setFAreas([]);
-    setFContactType("phone"); setFContactValue("");
   };
 
   // ── Load listings ──
@@ -1264,17 +1205,10 @@ export default function App() {
       const lng = fLng ?? (city ? city.lng + (Math.random() - .5) * .06 : -79.38);
       const country = fCountry || (city ? countryFromCityId(city.id) : "ca");
       const cityValue = fCity || city?.name || "";
-      const contactValue = fContactValue.trim();
-      const contact = {
-        phone: fContactType === "phone" ? contactValue : "",
-        whatsapp: fContactType === "whatsapp" ? contactValue : "",
-        instagram: fContactType === "instagram" ? contactValue : "",
-        wechat: fContactType === "wechat" ? contactValue : "",
-      };
       const payload = {
         nickname: fn, address: fAddr,
         country, city: cityValue, have: fHave, want: fWant, swap_areas: fAreas,
-        ...contact,
+        wechat: "", phone: "", whatsapp: "", instagram: "",
         lat, lng,
       };
       if (editingId && editingId !== "new") {
@@ -1295,7 +1229,7 @@ export default function App() {
       alert(`Failed to save: ${e?.message || "Please try again."}`);
     }
     setPosting(false);
-  }, [fn, fCountry, fCity, fAddr, fLat, fLng, fHave, fWant, fAreas, fContactType, fContactValue, posting, ownerToken, editingId, selectedCity]);
+  }, [fn, fCountry, fCity, fAddr, fLat, fLng, fHave, fWant, fAreas, posting, ownerToken, editingId, selectedCity]);
 
   // ── Start editing one of my listings ──
   const startEdit = (listing) => {
@@ -1308,14 +1242,6 @@ export default function App() {
     setFHave(toArr(listing.have));
     setFWant(listing.want || []);
     setFAreas(listing.swap_areas || []);
-    const contactEntry = [
-      ["phone", listing.phone],
-      ["whatsapp", listing.whatsapp],
-      ["instagram", listing.instagram],
-      ["wechat", listing.wechat],
-    ].find(([, value]) => value);
-    setFContactType(contactEntry?.[0] || "phone");
-    setFContactValue(contactEntry?.[1] || "");
     setEditingId(listing.id);
   };
 
@@ -1352,13 +1278,6 @@ export default function App() {
   const inp = { width: "100%", padding: "10px 14px", borderRadius: 10, fontSize: 14, border: "1.5px solid #ddd", background: "#fff", color: "#333", outline: "none", boxSizing: "border-box" };
   const lbl = { fontSize: 13, fontWeight: 500, color: "#666", display: "block", marginTop: 16, marginBottom: 6 };
   const chipStyle = (on) => ({ padding: "5px 13px", borderRadius: 10, fontSize: 13, cursor: "pointer", fontWeight: 500, background: on ? "#333" : "#f5f5f0", color: on ? "#fff" : "#555", border: `1px solid ${on ? "transparent" : "#e5e5e0"}`, userSelect: "none" });
-  const contactOptions = [
-    { id: "phone", icon: "📞", label: t.phoneLbl, placeholder: t.phonePh },
-    { id: "whatsapp", icon: "💬", label: t.whatsappLbl, placeholder: t.whatsappPh },
-    { id: "instagram", icon: "📸", label: t.instagramLbl, placeholder: t.instagramPh },
-    { id: "wechat", icon: "🟢", label: t.wechatLbl, placeholder: t.wechatPh },
-  ];
-  const selectedContact = contactOptions.find(x => x.id === fContactType) || contactOptions[0];
 
   if (loading) return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontSize: 15, color: "#888" }}>{t.loading}</div>
@@ -1445,7 +1364,7 @@ export default function App() {
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, color: "#10b981" }}>{t.swappable} ({matchCount})</div>
                 <div style={contentGrid}>
                   {filtered.filter(l => isMatchAny(myListings, l))
-                    .map(l => <ListingCard key={l.id} listing={l} myListings={myListings} onContact={setContactModal} onMessage={openChat} expanded={expandedId === l.id} onToggle={() => setExpandedId(expandedId === l.id ? null : l.id)} lang={lang} t={t} />)}
+                    .map(l => <ListingCard key={l.id} listing={l} myListings={myListings} onMessage={openChat} expanded={expandedId === l.id} onToggle={() => setExpandedId(expandedId === l.id ? null : l.id)} lang={lang} t={t} />)}
                 </div>
               </div>
             )}
@@ -1512,7 +1431,7 @@ export default function App() {
             )}
 
             <div style={contentGrid}>
-              {filtered.map(l => <ListingCard key={l.id} listing={l} myListings={myListings} onContact={setContactModal} onMessage={openChat} expanded={expandedId === l.id} onToggle={() => setExpandedId(expandedId === l.id ? null : l.id)} lang={lang} t={t} />)}
+              {filtered.map(l => <ListingCard key={l.id} listing={l} myListings={myListings} onMessage={openChat} expanded={expandedId === l.id} onToggle={() => setExpandedId(expandedId === l.id ? null : l.id)} lang={lang} t={t} />)}
               {filtered.length === 0 && <div style={{ textAlign: "center", padding: 40, color: "#aaa" }}><div style={{ fontSize: 28, marginBottom: 6 }}>🔍</div><div style={{ fontSize: 13 }}>{t.noResults}</div></div>}
             </div>
           </div>
@@ -1525,10 +1444,10 @@ export default function App() {
               <div style={formShell}>
                 <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 14 }}>{editingId === "new" ? t.postTitle : t.editTitle}</div>
 
-                <label style={{ ...lbl, marginTop: 0 }}>{t.nickname}</label>
+                <label style={{ ...lbl, marginTop: 0 }}>{t.nickname} <span style={{ color: "#ef4444" }}>*</span></label>
                 <input value={fn} onChange={e => setFn(e.target.value)} placeholder={t.nickPh} style={inp} />
 
-                <label style={lbl}>{t.location}</label>
+                <label style={lbl}>{t.location} <span style={{ color: "#ef4444" }}>*</span></label>
                 <AddressInput
                   value={fAddr}
                   onChange={(address) => {
@@ -1548,10 +1467,10 @@ export default function App() {
                 />
                 {fLat && fLng && <div style={{ fontSize: 11, color: "#10b981", marginTop: 4 }}>✓ {fAddr}</div>}
 
-                <label style={lbl}>{t.swapAreas}</label>
+                <label style={lbl}>{t.swapAreas} <span style={{ fontWeight: 400, color: "#aaa" }}>({t.optional})</span></label>
                 <TagInput tags={fAreas} onChange={setFAreas} placeholder={t.swapAreasPh} hint={t.swapAreasHint} />
 
-                <label style={lbl}>{t.iHave} <span style={{ fontWeight: 400, color: "#aaa" }}>{t.pickMulti}</span></label>
+                <label style={lbl}>{t.iHave} <span style={{ color: "#ef4444" }}>*</span> <span style={{ fontWeight: 400, color: "#aaa" }}>{t.pickMulti}</span></label>
                 <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
                   {MAGNETS.map(m => <MagnetPill key={m.id} id={m.id} lang={lang}
                     selected={fHave.includes(m.id)}
@@ -1561,49 +1480,12 @@ export default function App() {
                     }} />)}
                 </div>
 
-                <label style={lbl}>{t.iWant} <span style={{ fontWeight: 400, color: "#aaa" }}>{t.pickMany}</span></label>
+                <label style={lbl}>{t.iWant} <span style={{ color: "#ef4444" }}>*</span> <span style={{ fontWeight: 400, color: "#aaa" }}>{t.pickMany}</span></label>
                 <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
                   {MAGNETS.filter(m => !fHave.includes(m.id)).map(m => <MagnetPill key={m.id} id={m.id} lang={lang}
                     selected={fWant.includes(m.id)}
                     onClick={() => setFWant(p => p.includes(m.id) ? p.filter(x => x !== m.id) : [...p, m.id])} />)}
                 </div>
-
-                <label style={lbl}>{t.contactSection}</label>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: 15, width: 22, textAlign: "center", flexShrink: 0 }}>{selectedContact.icon}</span>
-                    <input value={fContactValue} onChange={e => setFContactValue(e.target.value)} placeholder={selectedContact.placeholder} style={inp} />
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: isWide ? "repeat(4, minmax(0, 1fr))" : "repeat(2, minmax(0, 1fr))", gap: 6 }}>
-                    {contactOptions.map(opt => {
-                      const on = fContactType === opt.id;
-                      return (
-                        <button
-                          key={opt.id}
-                          type="button"
-                          onClick={() => setFContactType(opt.id)}
-                          style={{
-                            minWidth: 0,
-                            padding: "8px 6px",
-                            borderRadius: 10,
-                            border: `1.5px solid ${on ? "#10b981" : "#e0e0d8"}`,
-                            background: on ? "rgba(16,185,129,.08)" : "#f9f9f5",
-                            color: on ? "#10b981" : "#666",
-                            fontSize: 11,
-                            fontWeight: 600,
-                            cursor: "pointer",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {opt.icon} {opt.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-                <div style={{ fontSize: 10, color: "#aaa", marginTop: 4 }}>{t.contactNote}</div>
 
                 <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
                   <button onClick={cancelEdit} style={{
@@ -1630,7 +1512,7 @@ export default function App() {
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                     {myListings.map(l => (
                       <div key={l.id}>
-                        <ListingCard listing={l} myListings={myListings} expanded onToggle={() => {}} onContact={() => {}} onMessage={() => {}} lang={lang} t={t} />
+                        <ListingCard listing={l} myListings={myListings} expanded onToggle={() => {}} onMessage={() => {}} lang={lang} t={t} />
                         <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
                           <button onClick={() => startEdit(l)} style={{ flex: 1, padding: "9px 0", border: "1.5px solid #3b82f6", borderRadius: 10, background: "transparent", color: "#3b82f6", fontWeight: 500, fontSize: 13, cursor: "pointer" }}>{t.edit}</button>
                           <button onClick={() => handleOffline(l)} style={{ flex: 1, padding: "9px 0", border: "1.5px solid #ef4444", borderRadius: 10, background: "transparent", color: "#ef4444", fontWeight: 500, fontSize: 13, cursor: "pointer" }}>{t.offline}</button>
@@ -1659,9 +1541,6 @@ export default function App() {
           )
         )}
       </div>
-
-      {/* ── Contact Modal ── */}
-      <ContactModal listing={contactModal} onClose={() => setContactModal(null)} t={t} />
 
       {/* ── Bottom Nav ── */}
       <div style={{
