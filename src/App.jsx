@@ -79,7 +79,7 @@ const T = {
     swapAreasHint:"如：Downtown、North York、Markham",
     iHave:"我有的冰箱贴", pickMulti:"（可多选）",
     iWant:"想换的冰箱贴", pickMany:"（可多选）",
-    expireIn:"有效期", expireDays:"天",
+    expireIn:"发布有效期", expireDays:"天",
     publish:"发布上线", publishing:"发布中...",
     myInfo:"我的信息", offline:"下线 / 重新发布",
     have:"有", want:"想换",
@@ -125,7 +125,7 @@ const T = {
     swapAreasHint:"e.g. Downtown, North York, Markham",
     iHave:"I have", pickMulti:"(pick multiple)",
     iWant:"I want", pickMany:"(pick multiple)",
-    expireIn:"Expires in", expireDays:"days",
+    expireIn:"Post Expires in", expireDays:"days",
     publish:"Go live", publishing:"Posting...",
     myInfo:"My listing", offline:"Go offline / Re-post",
     have:"Have", want:"Want",
@@ -1098,7 +1098,7 @@ export default function App() {
   const [fHave, setFHave] = useState([]);
   const [fWant, setFWant] = useState([]);
   const [fAreas, setFAreas] = useState([]);
-  const [fExpireDays, setFExpireDays] = useState("");
+  const [fExpireDays, setFExpireDays] = useState("3");
   const [posting, setPosting] = useState(false);
 
   const ownerToken = useMemo(() => getOwnerToken(), []);
@@ -1114,7 +1114,7 @@ export default function App() {
   const resetForm = () => {
     const defaultCountry = countryFromCityId(selectedCity);
     setFn(""); setFCountry(defaultCountry); setFCity(""); setFAddr(""); setFLat(null); setFLng(null);
-    setFHave([]); setFWant([]); setFAreas([]); setFExpireDays("");
+    setFHave([]); setFWant([]); setFAreas([]); setFExpireDays("3");
   };
 
   // ── Load listings ──
@@ -1533,12 +1533,30 @@ export default function App() {
                 </div>
 
                 <label style={lbl}>{t.expireIn} <span style={{ color: "#ef4444" }}>*</span></label>
-                <select value={fExpireDays} onChange={e => setFExpireDays(e.target.value)} style={inp}>
-                  <option value=""></option>
-                  {EXPIRY_OPTIONS.map(days => (
-                    <option key={days} value={days}>{days} {t.expireDays}</option>
-                  ))}
-                </select>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {EXPIRY_OPTIONS.map(days => {
+                    const selected = fExpireDays === String(days);
+                    return (
+                      <button
+                        key={days}
+                        type="button"
+                        onClick={() => setFExpireDays(String(days))}
+                        style={{
+                          padding: "8px 14px",
+                          borderRadius: 10,
+                          border: `1.5px solid ${selected ? "#10b981" : "#e0e0d8"}`,
+                          background: selected ? "rgba(16,185,129,.12)" : "#f5f5f0",
+                          color: selected ? "#059669" : "#555",
+                          fontWeight: selected ? 700 : 500,
+                          fontSize: 13,
+                          cursor: "pointer",
+                        }}
+                      >
+                        {days} {t.expireDays}
+                      </button>
+                    );
+                  })}
+                </div>
 
                 <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
                   <button onClick={cancelEdit} style={{
