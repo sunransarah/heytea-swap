@@ -39,21 +39,26 @@ http://localhost:5173/
 
 ## Database Setup
 
-For a new deployment, start with a clean Supabase database. Create a fresh Supabase project, then run the full SQL in `supabase-schema.sql` once:
+Start from a clean database, then run `supabase-schema.sql` once.
+
+In Supabase, open:
 
 ```text
 Supabase Dashboard -> SQL Editor -> New query
 ```
 
-The schema creates and updates the `listings` and `messages` tables, enables row-level security policies, and adds realtime/index setup.
+If you want to reset all app data, run this first:
 
-For an existing database, migrate once by running the latest `supabase-schema.sql` one time. The schema includes `if not exists` guards for tables, columns, policies, realtime setup, and indexes, so it is safe for the current migration path. Do not reset production data unless you intentionally want to remove all listings and messages.
+```sql
+drop table if exists messages cascade;
+drop table if exists listings cascade;
+```
 
-Recommended flow:
+Then paste and run the full contents of `supabase-schema.sql` once.
 
-1. New project: clean Supabase database -> run `supabase-schema.sql` once.
-2. Existing project: back up data -> run the latest `supabase-schema.sql` once as a migration.
-3. After schema changes: refresh the app and test posting, browsing, and chat.
+This does not have to be run only in the Supabase console. The Supabase SQL Editor is the easiest option, but any SQL client connected to the same Supabase Postgres database also works, such as `psql` or the Supabase CLI.
+
+After setup, refresh the app and test posting, browsing, and chat.
 
 ## Google Maps Setup
 
