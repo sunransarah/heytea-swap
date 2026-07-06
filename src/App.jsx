@@ -1133,10 +1133,8 @@ export default function App() {
   const [fHave, setFHave] = useState([]);
   const [fWant, setFWant] = useState([]);
   const [fAreas, setFAreas] = useState([]);
-  const [fPhone, setFPhone] = useState("");
-  const [fWhatsapp, setFWhatsapp] = useState("");
-  const [fInstagram, setFInstagram] = useState("");
-  const [fWechat, setFWechat] = useState("");
+  const [fContactType, setFContactType] = useState("phone");
+  const [fContactValue, setFContactValue] = useState("");
   const [posting, setPosting] = useState(false);
 
   const ownerToken = useMemo(() => getOwnerToken(), []);
@@ -1145,7 +1143,7 @@ export default function App() {
     const defaultCountry = countryFromCityId(selectedCity);
     setFn(""); setFCountry(defaultCountry); setFCity(""); setFAddr(""); setFLat(null); setFLng(null);
     setFHave([]); setFWant([]); setFAreas([]);
-    setFPhone(""); setFWhatsapp(""); setFInstagram(""); setFWechat("");
+    setFContactType("phone"); setFContactValue("");
   };
 
   // ── Load listings ──
@@ -1266,11 +1264,17 @@ export default function App() {
       const lng = fLng ?? (city ? city.lng + (Math.random() - .5) * .06 : -79.38);
       const country = fCountry || (city ? countryFromCityId(city.id) : "ca");
       const cityValue = fCity || city?.name || "";
+      const contactValue = fContactValue.trim();
+      const contact = {
+        phone: fContactType === "phone" ? contactValue : "",
+        whatsapp: fContactType === "whatsapp" ? contactValue : "",
+        instagram: fContactType === "instagram" ? contactValue : "",
+        wechat: fContactType === "wechat" ? contactValue : "",
+      };
       const payload = {
         nickname: fn, address: fAddr,
         country, city: cityValue, have: fHave, want: fWant, swap_areas: fAreas,
-        wechat: fWechat || "", phone: fPhone || "",
-        whatsapp: fWhatsapp || "", instagram: fInstagram || "",
+        ...contact,
         lat, lng,
       };
       if (editingId && editingId !== "new") {
@@ -1291,7 +1295,7 @@ export default function App() {
       alert(`Failed to save: ${e?.message || "Please try again."}`);
     }
     setPosting(false);
-  }, [fn, fCountry, fCity, fAddr, fLat, fLng, fHave, fWant, fAreas, fPhone, fWhatsapp, fInstagram, fWechat, posting, ownerToken, editingId, selectedCity]);
+  }, [fn, fCountry, fCity, fAddr, fLat, fLng, fHave, fWant, fAreas, fContactType, fContactValue, posting, ownerToken, editingId, selectedCity]);
 
   // ── Start editing one of my listings ──
   const startEdit = (listing) => {
@@ -1304,10 +1308,14 @@ export default function App() {
     setFHave(toArr(listing.have));
     setFWant(listing.want || []);
     setFAreas(listing.swap_areas || []);
-    setFPhone(listing.phone || "");
-    setFWhatsapp(listing.whatsapp || "");
-    setFInstagram(listing.instagram || "");
-    setFWechat(listing.wechat || "");
+    const contactEntry = [
+      ["phone", listing.phone],
+      ["whatsapp", listing.whatsapp],
+      ["instagram", listing.instagram],
+      ["wechat", listing.wechat],
+    ].find(([, value]) => value);
+    setFContactType(contactEntry?.[0] || "phone");
+    setFContactValue(contactEntry?.[1] || "");
     setEditingId(listing.id);
   };
 
@@ -1344,6 +1352,13 @@ export default function App() {
   const inp = { width: "100%", padding: "10px 14px", borderRadius: 10, fontSize: 14, border: "1.5px solid #ddd", background: "#fff", color: "#333", outline: "none", boxSizing: "border-box" };
   const lbl = { fontSize: 13, fontWeight: 500, color: "#666", display: "block", marginTop: 16, marginBottom: 6 };
   const chipStyle = (on) => ({ padding: "5px 13px", borderRadius: 10, fontSize: 13, cursor: "pointer", fontWeight: 500, background: on ? "#333" : "#f5f5f0", color: on ? "#fff" : "#555", border: `1px solid ${on ? "transparent" : "#e5e5e0"}`, userSelect: "none" });
+  const contactOptions = [
+    { id: "phone", icon: "📞", label: t.phoneLbl, placeholder: t.phonePh },
+    { id: "whatsapp", icon: "💬", label: t.whatsappLbl, placeholder: t.whatsappPh },
+    { id: "instagram", icon: "📸", label: t.instagramLbl, placeholder: t.instagramPh },
+    { id: "wechat", icon: "🟢", label: t.wechatLbl, placeholder: t.wechatPh },
+  ];
+  const selectedContact = contactOptions.find(x => x.id === fContactType) || contactOptions[0];
 
   if (loading) return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontSize: 15, color: "#888" }}>{t.loading}</div>
@@ -1554,22 +1569,38 @@ export default function App() {
                 </div>
 
                 <label style={lbl}>{t.contactSection}</label>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: "12px 14px", borderRadius: 12, background: "#f9f9f5", border: "1px solid #eee" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: 14, width: 22, textAlign: "center" }}>📞</span>
-                    <input value={fPhone} onChange={e => setFPhone(e.target.value)} placeholder={t.phonePh} style={{ ...inp }} />
+                    <span style={{ fontSize: 15, width: 22, textAlign: "center", flexShrink: 0 }}>{selectedContact.icon}</span>
+                    <input value={fContactValue} onChange={e => setFContactValue(e.target.value)} placeholder={selectedContact.placeholder} style={inp} />
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: 14, width: 22, textAlign: "center" }}>💬</span>
-                    <input value={fWhatsapp} onChange={e => setFWhatsapp(e.target.value)} placeholder={t.whatsappPh} style={{ ...inp }} />
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: 14, width: 22, textAlign: "center" }}>📸</span>
-                    <input value={fInstagram} onChange={e => setFInstagram(e.target.value)} placeholder={t.instagramPh} style={{ ...inp }} />
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: 14, width: 22, textAlign: "center" }}>🟢</span>
-                    <input value={fWechat} onChange={e => setFWechat(e.target.value)} placeholder={t.wechatPh} style={{ ...inp }} />
+                  <div style={{ display: "grid", gridTemplateColumns: isWide ? "repeat(4, minmax(0, 1fr))" : "repeat(2, minmax(0, 1fr))", gap: 6 }}>
+                    {contactOptions.map(opt => {
+                      const on = fContactType === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => setFContactType(opt.id)}
+                          style={{
+                            minWidth: 0,
+                            padding: "8px 6px",
+                            borderRadius: 10,
+                            border: `1.5px solid ${on ? "#10b981" : "#e0e0d8"}`,
+                            background: on ? "rgba(16,185,129,.08)" : "#f9f9f5",
+                            color: on ? "#10b981" : "#666",
+                            fontSize: 11,
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {opt.icon} {opt.label}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
                 <div style={{ fontSize: 10, color: "#aaa", marginTop: 4 }}>{t.contactNote}</div>
