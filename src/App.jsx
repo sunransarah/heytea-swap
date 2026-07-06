@@ -1616,7 +1616,7 @@ export default function App() {
             {x.badge > 0 && (
               <span style={{
                 position: "absolute", top: -2, right: 4,
-                minWidth: 16, height: 16, borderRadius: 8,
+                minWidth: 16, height: 16, borderRadius: 8,   
                 background: "#ef4444", color: "#fff", fontSize: 9, fontWeight: 700,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 padding: "0 3px",
