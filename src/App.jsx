@@ -425,13 +425,37 @@ function TagInput({ tags, onChange, placeholder, hint }) {
 }
 
 // ── Swap time input: date + time picker, adds chips ──
-function CitySelector({ value, onChange, t }) {
+function CitySelector({ value, onChange, onCitySelect, t }) {
   const ca = CITIES.filter(c => c.country === "🇨🇦");
   const us = CITIES.filter(c => c.country === "🇺🇸");
+  if (GMAP_KEY) {
+    return (
+      <CityInput
+        value={value?.name || ""}
+        country={NORTH_AMERICA_COUNTRIES}
+        onChange={name => onChange({ ...value, name })}
+        onCitySelect={selected => {
+          if (!selected) return;
+          onChange({
+            ...value,
+            ...selected,
+            id: selected.id || value?.id || "",
+            zoom: selected.zoom || 12,
+          });
+        }}
+        placeholder={t.selectCity}
+        style={{ width: "100%" }}
+        t={t}
+      />
+    );
+  }
   return (
     <select
-      value={value}
-      onChange={e => onChange(e.target.value)}
+      value={value?.id || ""}
+      onChange={e => {
+        const city = CITIES.find(c => c.id === e.target.value);
+        if (city) onChange({ id: city.id, name: city.name, lat: city.lat, lng: city.lng, country: city.country === "🇺🇸" ? "us" : "ca", zoom: city.zoom });
+      }}
       style={{
         padding: "8px 12px", borderRadius: 10, fontSize: 13, fontWeight: 500,
         border: "1.5px solid #ddd", background: "#fff", color: "#333",
@@ -465,18 +489,21 @@ function CityInput({ value, country, onChange, onCitySelect, placeholder, style:
       if (!inputRef.current) return;
       const ac = new gmaps.places.Autocomplete(inputRef.current, {
         types: ["(cities)"],
-        componentRestrictions: { country: country || ["ca", "us"] },
-        fields: ["formatted_address", "geometry", "name"],
+        componentRestrictions: { country: country || NORTH_AMERICA_COUNTRIES },
+        fields: ["formatted_address", "geometry", "name", "address_components"],
       });
       ac.addListener("place_changed", () => {
         const place = ac.getPlace();
         const cityName = place.name || place.formatted_address || value;
+        const countryComponent = place.address_components?.find(c => c.types?.includes("country"));
+        const countryCode = countryComponent?.short_name?.toLowerCase();
         onChange(cityName);
         if (place?.geometry?.location) {
           onCitySelect?.({
             city: cityName,
             lat: place.geometry.location.lat(),
             lng: place.geometry.location.lng(),
+            country: countryCode === "us" ? "us" : countryCode === "ca" ? "ca" : undefined,
           });
         }
       });
@@ -508,10 +535,12 @@ function GoogleMapView({ listings, onSelect, myListings = [], selectedCity, t, i
   useEffect(() => {
     if (!gmaps || !mapRef.current || mapInstanceRef.current) return;
     try {
-      const initCity = CITIES.find(c => c.id === selectedCity) || CITIES[0];
+      const initLoc = selectedCity?.lat && selectedCity?.lng
+        ? selectedCity
+        : CITIES.find(c => c.id === selectedCity?.id) || CITIES[0];
       mapInstanceRef.current = new gmaps.Map(mapRef.current, {
-        center: { lat: initCity.lat, lng: initCity.lng },
-        zoom: initCity.zoom,
+        center: { lat: initLoc.lat, lng: initLoc.lng },
+        zoom: initLoc.zoom || 12,
         zoomControl: true,
         mapTypeControl: false,
         streetViewControl: false,
@@ -529,12 +558,9 @@ function GoogleMapView({ listings, onSelect, myListings = [], selectedCity, t, i
 
   // Pan to selected city
   useEffect(() => {
-    if (!mapInstanceRef.current || !selectedCity) return;
-    const city = CITIES.find(c => c.id === selectedCity);
-    if (city) {
-      mapInstanceRef.current.panTo({ lat: city.lat, lng: city.lng });
-      mapInstanceRef.current.setZoom(city.zoom);
-    }
+    if (!mapInstanceRef.current || !selectedCity?.lat || !selectedCity?.lng) return;
+    mapInstanceRef.current.panTo({ lat: selectedCity.lat, lng: selectedCity.lng });
+    mapInstanceRef.current.setZoom(selectedCity.zoom || 12);
   }, [selectedCity]);
 
   // Update markers
@@ -1089,11 +1115,49 @@ export default function App() {
   const [contactModal, setContactModal] = useState(null);
   const [filterMagnet, setFilterMagnet] = useState("");
   const [loading, setLoading] = useState(true);
-  const [selectedCity, setSelectedCity] = useState(() => localStorage.getItem("heytea-city") || "toronto");
+  const [userLocation, setUserLocation] = useState(null);
+  const [selectedCity, setSelectedCity] = useState(() => {
+    const saved = localStorage.getItem("heytea-city");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed?.name && parsed?.lat && parsed?.lng) return parsed;
+      } catch (e) {}
+    }
+    const defaultCity = CITIES.find(c => c.id === "toronto") || CITIES[0];
+    return {
+      id: defaultCity.id,
+      name: defaultCity.name,
+      lat: defaultCity.lat,
+      lng: defaultCity.lng,
+      zoom: defaultCity.zoom,
+      country: defaultCity.country === "🇺🇸" ? "us" : "ca",
+    };
+  });
 
   // Chat state
   const [chatTarget, setChatTarget] = useState(null);
   const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const location = {
+          id: "my-location",
+          name: "Current location",
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          zoom: 12,
+          country: "us",
+        };
+        setUserLocation(location);
+        setSelectedCity(location);
+      },
+      () => {},
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
+    );
+  }, []);
 
   // Editing state — which of my listings (if any) is currently being edited. "new" = creating a fresh one.
   const [editingId, setEditingId] = useState(null);
@@ -1122,8 +1186,9 @@ export default function App() {
   const ownerToken = useMemo(() => getOwnerToken(), []);
 
   const resetForm = () => {
-    const defaultCountry = countryFromCityId(selectedCity);
-    setFn(""); setFCountry(defaultCountry); setFCity(CITIES.find(c => c.id === selectedCity)?.name || ""); setFAddr(""); setFLat(null); setFLng(null);
+    const defaultCountry = selectedCity?.country || countryFromCityId(selectedCity?.id);
+    const defaultCityName = selectedCity?.name || CITIES.find(c => c.id === selectedCity?.id)?.name || "";
+    setFn(""); setFCountry(defaultCountry); setFCity(defaultCityName); setFAddr(""); setFLat(null); setFLng(null);
     setFHave([]); setFWant([]); setFAreas([]);
     setFPhone(""); setFWhatsapp(""); setFInstagram(""); setFWechat("");
   };
@@ -1175,7 +1240,10 @@ export default function App() {
   }, [ownerToken]);
 
   useEffect(() => { localStorage.setItem("heytea-lang", lang); }, [lang]);
-  useEffect(() => { localStorage.setItem("heytea-city", selectedCity); }, [selectedCity]);
+  useEffect(() => {
+    if (!selectedCity) return;
+    localStorage.setItem("heytea-city", JSON.stringify(selectedCity));
+  }, [selectedCity]);
 
   const activeListings = useMemo(() => listings.filter(l => l.active !== false), [listings]);
 
@@ -1260,7 +1328,14 @@ export default function App() {
       setEditingId(null);
       resetForm();
       setTab("map");
-      if (city) setSelectedCity(city.id);
+      if (city) setSelectedCity({
+        id: city.id,
+        name: city.name,
+        lat: city.lat,
+        lng: city.lng,
+        zoom: city.zoom,
+        country: city.country === "🇺🇸" ? "us" : "ca",
+      });
     } catch (e) {
       console.error(e);
       alert(`Failed to save: ${e?.message || "Please try again."}`);
