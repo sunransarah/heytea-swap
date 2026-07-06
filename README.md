@@ -39,26 +39,24 @@ http://localhost:5173/
 
 ## Database Setup
 
-Start from a clean database, then run `supabase-schema.sql` once.
-
-In Supabase, open:
+Use the Supabase SQL Editor:
 
 ```text
 Supabase Dashboard -> SQL Editor -> New query
 ```
 
-If you want to reset all app data, run this first:
+To start from a clean app database, run this cleanup script first:
 
 ```sql
 drop table if exists messages cascade;
 drop table if exists listings cascade;
 ```
 
-Then paste and run the full contents of `supabase-schema.sql` once.
+Then run the full contents of `supabase-schema.sql` once in the same SQL Editor.
 
-This does not have to be run only in the Supabase console. The Supabase SQL Editor is the easiest option, but any SQL client connected to the same Supabase Postgres database also works, such as `psql` or the Supabase CLI.
+The cleanup script deletes all app listings and chat messages. Use it only when resetting the app database.
 
-After setup, refresh the app and test posting, browsing, and chat.
+Then refresh the app and test posting, browsing, and chat.
 
 ## Google Maps Setup
 

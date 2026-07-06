@@ -1198,12 +1198,12 @@ export default function App() {
   }, [myListings]);
 
   const filtered = useMemo(() => {
-    let res = activeListings.filter(l => l.owner_token !== ownerToken);
+    let res = activeListings;
     if (filterMagnet && filterMagnet !== "__match__") {
       res = res.filter(l => toArr(l.have).includes(filterMagnet));
     }
     if (filterMagnet === "__match__") {
-      res = res.filter(l => isMatchAny(myListings, l));
+      res = res.filter(l => l.owner_token !== ownerToken && isMatchAny(myListings, l));
     }
     if (distanceKmFilter && myCoords) {
       const maxKm = Number(distanceKmFilter);
@@ -1250,7 +1250,6 @@ export default function App() {
       const payload = {
         nickname: fn, address: fAddr,
         country, city: cityValue, have: fHave, want: fWant, swap_areas: fAreas,
-        wechat: "", phone: "", whatsapp: "", instagram: "",
         expires_at: expiresAt,
         lat, lng,
       };
@@ -1259,7 +1258,7 @@ export default function App() {
         if (error) throw error;
         setListings(prev => data.active === false ? prev.filter(l => l.id !== data.id) : prev.map(l => l.id === data.id ? data : l));
       } else {
-        const { data, error } = await supabase.from("listings").insert({ ...payload, owner_token: ownerToken, radius: 5 }).select().single();
+        const { data, error } = await supabase.from("listings").insert({ ...payload, owner_token: ownerToken }).select().single();
         if (error) throw error;
         if (data.active !== false) setListings(prev => [data, ...prev]);
       }

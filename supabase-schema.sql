@@ -6,16 +6,12 @@ create table if not exists listings (
   owner_token text not null,
   nickname text not null,
   address text not null,
-  radius int default 5,
   have text[] not null,
   want text[] not null,
   country text default 'ca',
   city text,
   swap_areas text[] default '{}',
-  wechat text default '',
-  phone text default '',
-  whatsapp text default '',
-  instagram text default '',
+  expires_at timestamptz not null,
   lat float default 0,
   lng float default 0,
   active boolean default true,
@@ -26,9 +22,13 @@ create table if not exists listings (
 alter table listings add column if not exists city text;
 alter table listings add column if not exists country text default 'ca';
 alter table listings add column if not exists swap_areas text[] default '{}';
-alter table listings add column if not exists phone text default '';
-alter table listings add column if not exists whatsapp text default '';
-alter table listings add column if not exists instagram text default '';
+alter table listings add column if not exists expires_at timestamptz;
+
+update listings
+set expires_at = created_at + interval '3 days'
+where expires_at is null;
+
+alter table listings alter column expires_at set not null;
 
 do $$
 begin
