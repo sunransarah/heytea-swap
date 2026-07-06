@@ -79,6 +79,7 @@ const T = {
     swapAreasHint:"如：Downtown、North York、Markham",
     iHave:"我有的冰箱贴", pickMulti:"（可多选）",
     iWant:"想换的冰箱贴", pickMany:"（可多选）",
+    expireIn:"有效期", expireDays:"天",
     publish:"发布上线", publishing:"发布中...",
     myInfo:"我的信息", offline:"下线 / 重新发布",
     have:"有", want:"想换",
@@ -124,6 +125,7 @@ const T = {
     swapAreasHint:"e.g. Downtown, North York, Markham",
     iHave:"I have", pickMulti:"(pick multiple)",
     iWant:"I want", pickMany:"(pick multiple)",
+    expireIn:"Expires in", expireDays:"days",
     publish:"Go live", publishing:"Posting...",
     myInfo:"My listing", offline:"Go offline / Re-post",
     have:"Have", want:"Want",
@@ -165,6 +167,7 @@ const mColor = (id) => { const m = mFind(id); if (!m) return "#888"; return m.c1
 
 // Normalize have field: always return an array
 const toArr = (v) => Array.isArray(v) ? v : (v ? [v] : []);
+const EXPIRY_OPTIONS = [1, 3, 7];
 const countryFromCityId = (cityId) => CITIES.find(c => c.id === cityId)?.country === "🇺🇸" ? "us" : "ca";
 const countryLabel = (code) => code === "us" ? "USA" : "Canada";
 const inferPlaceLocation = (place) => {
@@ -275,6 +278,24 @@ const timeAgo = (ts, t) => {
   if (d < 3600000) return Math.floor(d / 60000) + t.minAgo;
   if (d < 86400000) return Math.floor(d / 3600000) + t.hrAgo;
   return Math.floor(d / 86400000) + t.dayAgo;
+};
+
+const expiresAtFromDays = (days) => {
+  const n = Number(days);
+  if (!EXPIRY_OPTIONS.includes(n)) return null;
+  return new Date(Date.now() + n * 86400000).toISOString();
+};
+
+const isExpiredListing = (listing) => {
+  if (!listing?.expires_at) return false;
+  return new Date(listing.expires_at).getTime() <= Date.now();
+};
+
+const expiryDaysFromListing = (listing) => {
+  if (EXPIRY_OPTIONS.includes(Number(listing?.expire_days))) return String(Number(listing.expire_days));
+  if (!listing?.expires_at) return "";
+  const daysLeft = Math.ceil((new Date(listing.expires_at).getTime() - Date.now()) / 86400000);
+  return String(EXPIRY_OPTIONS.find(days => daysLeft <= days) || 7);
 };
 
 const GMAP_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY || "";
@@ -1077,35 +1098,55 @@ export default function App() {
   const [fHave, setFHave] = useState([]);
   const [fWant, setFWant] = useState([]);
   const [fAreas, setFAreas] = useState([]);
+  const [fExpireDays, setFExpireDays] = useState("");
   const [posting, setPosting] = useState(false);
 
   const ownerToken = useMemo(() => getOwnerToken(), []);
 
+  const deleteExpiredListings = useCallback(async () => {
+    try {
+      await supabase.from("listings").delete().lte("expires_at", new Date().toISOString());
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
   const resetForm = () => {
     const defaultCountry = countryFromCityId(selectedCity);
     setFn(""); setFCountry(defaultCountry); setFCity(""); setFAddr(""); setFLat(null); setFLng(null);
-    setFHave([]); setFWant([]); setFAreas([]);
+    setFHave([]); setFWant([]); setFAreas([]); setFExpireDays("");
   };
 
   // ── Load listings ──
   useEffect(() => {
     async function load() {
       try {
-        const { data } = await supabase.from("listings").select("*").eq("active", true).order("created_at", { ascending: false });
-        if (data) setListings(data);
+        await deleteExpiredListings();
+        const { data } = await supabase
+          .from("listings")
+          .select("*")
+          .eq("active", true)
+          .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
+          .order("created_at", { ascending: false });
+        if (data) setListings(data.filter(l => !isExpiredListing(l)));
       } catch (e) { console.error(e); }
       setLoading(false);
     }
     load();
 
+    const cleanupTimer = window.setInterval(() => {
+      deleteExpiredListings();
+      setListings(prev => prev.filter(l => !isExpiredListing(l)));
+    }, 60000);
+
     const ch = supabase.channel("listings-changes")
       .on("postgres_changes", { event: "*", schema: "public", table: "listings" }, (payload) => {
         if (payload.eventType === "INSERT") {
-          if (payload.new.active !== false) {
+          if (payload.new.active !== false && !isExpiredListing(payload.new)) {
             setListings(prev => [payload.new, ...prev.filter(l => l.id !== payload.new.id)]);
           }
         } else if (payload.eventType === "UPDATE") {
-          if (!payload.new.active) {
+          if (!payload.new.active || isExpiredListing(payload.new)) {
             setListings(prev => prev.filter(l => l.id !== payload.new.id));
           } else {
             setListings(prev => prev.map(l => l.id === payload.new.id ? payload.new : l));
@@ -1115,8 +1156,8 @@ export default function App() {
         }
       })
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
-  }, [ownerToken]);
+    return () => { window.clearInterval(cleanupTimer); supabase.removeChannel(ch); };
+  }, [deleteExpiredListings]);
 
   // ── Unread count ──
   useEffect(() => {
@@ -1136,7 +1177,7 @@ export default function App() {
   useEffect(() => { localStorage.setItem("heytea-lang", lang); }, [lang]);
   useEffect(() => { localStorage.setItem("heytea-city", selectedCity); }, [selectedCity]);
 
-  const activeListings = useMemo(() => listings.filter(l => l.active !== false), [listings]);
+  const activeListings = useMemo(() => listings.filter(l => l.active !== false && !isExpiredListing(l)), [listings]);
 
   // All of my own active listings
   const myListings = useMemo(() => activeListings.filter(l => l.owner_token === ownerToken), [activeListings, ownerToken]);
@@ -1194,9 +1235,11 @@ export default function App() {
 
   // ── Post a new listing, or save edits to an existing one ──
   const handlePost = useCallback(async () => {
-    if (!fn || !fAddr || fHave.length === 0 || fWant.length === 0 || posting) return;
+    if (!fn || !fAddr || fHave.length === 0 || fWant.length === 0 || !fExpireDays || posting) return;
     setPosting(true);
     try {
+      const expiresAt = expiresAtFromDays(fExpireDays);
+      if (!expiresAt) throw new Error("Please choose an expiration date.");
       const selectedFallback = CITIES.find(c => c.id === selectedCity);
       const city = CITIES.find(c => (c.id === fCity || c.name === fCity) && (!fCountry || countryFromCityId(c.id) === fCountry))
         || nearestCityByCoords(fLat, fLng)
@@ -1209,6 +1252,7 @@ export default function App() {
         nickname: fn, address: fAddr,
         country, city: cityValue, have: fHave, want: fWant, swap_areas: fAreas,
         wechat: "", phone: "", whatsapp: "", instagram: "",
+        expire_days: Number(fExpireDays), expires_at: expiresAt,
         lat, lng,
       };
       if (editingId && editingId !== "new") {
@@ -1229,7 +1273,7 @@ export default function App() {
       alert(`Failed to save: ${e?.message || "Please try again."}`);
     }
     setPosting(false);
-  }, [fn, fCountry, fCity, fAddr, fLat, fLng, fHave, fWant, fAreas, posting, ownerToken, editingId, selectedCity]);
+  }, [fn, fCountry, fCity, fAddr, fLat, fLng, fHave, fWant, fAreas, fExpireDays, posting, ownerToken, editingId, selectedCity]);
 
   // ── Start editing one of my listings ──
   const startEdit = (listing) => {
@@ -1242,6 +1286,7 @@ export default function App() {
     setFHave(toArr(listing.have));
     setFWant(listing.want || []);
     setFAreas(listing.swap_areas || []);
+    setFExpireDays(expiryDaysFromListing(listing));
     setEditingId(listing.id);
   };
 
@@ -1265,7 +1310,7 @@ export default function App() {
 
   const openChatDirect = (token, name) => setChatTarget({ token, name });
 
-  const canPost = fn && fAddr && fHave.length > 0 && fWant.length > 0;
+  const canPost = fn && fAddr && fHave.length > 0 && fWant.length > 0 && fExpireDays;
   const viewportWidth = useViewportWidth();
   const isWide = viewportWidth >= 768;
   const appMaxWidth = isWide ? 1120 : 440;
@@ -1486,6 +1531,14 @@ export default function App() {
                     selected={fWant.includes(m.id)}
                     onClick={() => setFWant(p => p.includes(m.id) ? p.filter(x => x !== m.id) : [...p, m.id])} />)}
                 </div>
+
+                <label style={lbl}>{t.expireIn} <span style={{ color: "#ef4444" }}>*</span></label>
+                <select value={fExpireDays} onChange={e => setFExpireDays(e.target.value)} style={inp}>
+                  <option value=""></option>
+                  {EXPIRY_OPTIONS.map(days => (
+                    <option key={days} value={days}>{days} {t.expireDays}</option>
+                  ))}
+                </select>
 
                 <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
                   <button onClick={cancelEdit} style={{
