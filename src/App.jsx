@@ -1328,7 +1328,7 @@ export default function App() {
   );
 
   return (
-    <div style={{ width: "100%", maxWidth: appMaxWidth, margin: "0 auto", height: "100dvh", minHeight: "100vh", maxHeight: "100dvh", display: "flex", flexDirection: "column" }}>
+    <div style={{ width: "100%", maxWidth: appMaxWidth, margin: "0 auto", height: "100dvh", maxHeight: "100dvh", display: "flex", flexDirection: "column" }}>
 
       {/* ── Header ── */}
       <div style={{ padding: `14px ${appPaddingX}px 10px`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
