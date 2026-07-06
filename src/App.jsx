@@ -292,7 +292,6 @@ const isExpiredListing = (listing) => {
 };
 
 const expiryDaysFromListing = (listing) => {
-  if (EXPIRY_OPTIONS.includes(Number(listing?.expire_days))) return String(Number(listing.expire_days));
   if (!listing?.expires_at) return "";
   const daysLeft = Math.ceil((new Date(listing.expires_at).getTime() - Date.now()) / 86400000);
   return String(EXPIRY_OPTIONS.find(days => daysLeft <= days) || 7);
@@ -1252,7 +1251,7 @@ export default function App() {
         nickname: fn, address: fAddr,
         country, city: cityValue, have: fHave, want: fWant, swap_areas: fAreas,
         wechat: "", phone: "", whatsapp: "", instagram: "",
-        expire_days: Number(fExpireDays), expires_at: expiresAt,
+        expires_at: expiresAt,
         lat, lng,
       };
       if (editingId && editingId !== "new") {
@@ -1533,12 +1532,20 @@ export default function App() {
                 </div>
 
                 <label style={lbl}>{t.expireIn} <span style={{ color: "#ef4444" }}>*</span></label>
-                <select value={fExpireDays} onChange={e => setFExpireDays(e.target.value)} style={inp}>
-                  <option value=""></option>
-                  {EXPIRY_OPTIONS.map(days => (
-                    <option key={days} value={days}>{days} {t.expireDays}</option>
-                  ))}
-                </select>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {EXPIRY_OPTIONS.map(days => {
+                    const selected = fExpireDays === String(days);
+                    return (
+                      <button key={days} type="button" onClick={() => setFExpireDays(String(days))} style={{
+                        flex: 1, padding: "10px 0", borderRadius: 10, fontSize: 14, fontWeight: 500,
+                        background: selected ? "#10b98115" : "#f5f5f0",
+                        border: `1.5px solid ${selected ? "#10b981" : "#e0e0d8"}`,
+                        color: selected ? "#10b981" : "#1a1a1a",
+                        cursor: "pointer", transition: "all .12s",
+                      }}>{days} {t.expireDays}</button>
+                    );
+                  })}
+                </div>
 
                 <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
                   <button onClick={cancelEdit} style={{
