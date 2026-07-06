@@ -185,6 +185,21 @@ const mColor = (id) => { const m = mFind(id); if (!m) return "#888"; return m.c1
 const toArr = (v) => Array.isArray(v) ? v : (v ? [v] : []);
 const countryFromCityId = (cityId) => CITIES.find(c => c.id === cityId)?.country === "🇺🇸" ? "us" : "ca";
 const countryLabel = (code) => code === "us" ? "USA" : "Canada";
+const inferPlaceLocation = (place) => {
+  const parts = place?.address_components || [];
+  const byType = (...types) => parts.find(p => types.some(type => p.types?.includes(type)));
+  const countryShort = byType("country")?.short_name?.toLowerCase();
+  const country = countryShort === "us" ? "us" : countryShort === "ca" ? "ca" : "";
+  const cityName = byType("locality", "postal_town", "sublocality", "sublocality_level_1", "administrative_area_level_3")?.long_name || "";
+  return { country, city: cityName };
+};
+const nearestCityByCoords = (lat, lng) => {
+  if (lat == null || lng == null) return null;
+  return CITIES.reduce((best, city) => {
+    const d = distanceKm(lat, lng, city.lat, city.lng);
+    return !best || d < best.distance ? { city, distance: d } : best;
+  }, null)?.city || null;
+};
 
 function useViewportWidth() {
   const [width, setWidth] = useState(() => typeof window === "undefined" ? 0 : window.innerWidth);
@@ -732,14 +747,19 @@ function AddressInput({ value, country, onChange, onPlaceSelect, placeholder, st
       const ac = new gmaps.places.Autocomplete(inputRef.current, {
         types: ["address"],
         componentRestrictions: { country: country || ["ca", "us"] },
-        fields: ["formatted_address", "geometry"],
+        fields: ["address_components", "formatted_address", "geometry"],
       });
       ac.addListener("place_changed", () => {
         const place = ac.getPlace();
         if (place?.geometry?.location) {
           const addr = place.formatted_address || value;
           onChange(addr);
-          onPlaceSelect({ address: addr, lat: place.geometry.location.lat(), lng: place.geometry.location.lng() });
+          onPlaceSelect({
+            address: addr,
+            lat: place.geometry.location.lat(),
+            lng: place.geometry.location.lng(),
+            ...inferPlaceLocation(place),
+          });
         }
       });
       acRef.current = ac;
@@ -1123,7 +1143,7 @@ export default function App() {
 
   const resetForm = () => {
     const defaultCountry = countryFromCityId(selectedCity);
-    setFn(""); setFCountry(defaultCountry); setFCity(CITIES.find(c => c.id === selectedCity)?.name || ""); setFAddr(""); setFLat(null); setFLng(null);
+    setFn(""); setFCountry(defaultCountry); setFCity(""); setFAddr(""); setFLat(null); setFLng(null);
     setFHave([]); setFWant([]); setFAreas([]);
     setFPhone(""); setFWhatsapp(""); setFInstagram(""); setFWechat("");
   };
@@ -1235,15 +1255,20 @@ export default function App() {
 
   // ── Post a new listing, or save edits to an existing one ──
   const handlePost = useCallback(async () => {
-    if (!fn || !fCity || !fAddr || fHave.length === 0 || fWant.length === 0 || posting) return;
+    if (!fn || !fAddr || fHave.length === 0 || fWant.length === 0 || posting) return;
     setPosting(true);
     try {
-      const city = CITIES.find(c => (c.id === fCity || c.name === fCity) && countryFromCityId(c.id) === fCountry);
+      const selectedFallback = CITIES.find(c => c.id === selectedCity);
+      const city = CITIES.find(c => (c.id === fCity || c.name === fCity) && (!fCountry || countryFromCityId(c.id) === fCountry))
+        || nearestCityByCoords(fLat, fLng)
+        || selectedFallback;
       const lat = fLat ?? (city ? city.lat + (Math.random() - .5) * .04 : 43.65);
       const lng = fLng ?? (city ? city.lng + (Math.random() - .5) * .06 : -79.38);
+      const country = fCountry || (city ? countryFromCityId(city.id) : "ca");
+      const cityValue = fCity || city?.name || "";
       const payload = {
         nickname: fn, address: fAddr,
-        country: fCountry, city: fCity, have: fHave, want: fWant, swap_areas: fAreas,
+        country, city: cityValue, have: fHave, want: fWant, swap_areas: fAreas,
         wechat: fWechat || "", phone: fPhone || "",
         whatsapp: fWhatsapp || "", instagram: fInstagram || "",
         lat, lng,
@@ -1266,7 +1291,7 @@ export default function App() {
       alert(`Failed to save: ${e?.message || "Please try again."}`);
     }
     setPosting(false);
-  }, [fn, fCountry, fCity, fAddr, fLat, fLng, fHave, fWant, fAreas, fPhone, fWhatsapp, fInstagram, fWechat, posting, ownerToken, editingId]);
+  }, [fn, fCountry, fCity, fAddr, fLat, fLng, fHave, fWant, fAreas, fPhone, fWhatsapp, fInstagram, fWechat, posting, ownerToken, editingId, selectedCity]);
 
   // ── Start editing one of my listings ──
   const startEdit = (listing) => {
@@ -1306,7 +1331,7 @@ export default function App() {
 
   const openChatDirect = (token, name) => setChatTarget({ token, name });
 
-  const canPost = fn && fCountry && fCity && fAddr && fHave.length > 0 && fWant.length > 0;
+  const canPost = fn && fAddr && fHave.length > 0 && fWant.length > 0;
   const viewportWidth = useViewportWidth();
   const isWide = viewportWidth >= 768;
   const appMaxWidth = isWide ? 1120 : 440;
@@ -1488,28 +1513,22 @@ export default function App() {
                 <label style={{ ...lbl, marginTop: 0 }}>{t.nickname}</label>
                 <input value={fn} onChange={e => setFn(e.target.value)} placeholder={t.nickPh} style={inp} />
 
-                <label style={lbl}>{t.country}</label>
-                <select value={fCountry} onChange={e => { setFCountry(e.target.value); setFCity(""); setFAddr(""); setFLat(null); setFLng(null); }} style={inp}>
-                  <option value="ca">Canada</option>
-                  <option value="us">USA</option>
-                </select>
-
-                <label style={lbl}>{t.city}</label>
-                <CityInput
-                  value={fCity}
-                  country={fCountry}
-                  onChange={setFCity}
-                  onCitySelect={({ lat, lng }) => { setFLat(lat); setFLng(lng); }}
-                  placeholder={t.cityPh}
-                  style={inp}
-                  t={t}
-                />
-
                 <label style={lbl}>{t.location}</label>
                 <AddressInput
-                  value={fAddr} onChange={setFAddr}
-                  country={fCountry}
-                  onPlaceSelect={({ address, lat, lng }) => { setFAddr(address); setFLat(lat); setFLng(lng); }}
+                  value={fAddr}
+                  onChange={(address) => {
+                    setFAddr(address);
+                    setFCity("");
+                    setFLat(null);
+                    setFLng(null);
+                  }}
+                  onPlaceSelect={({ address, lat, lng, country, city }) => {
+                    setFAddr(address);
+                    setFLat(lat);
+                    setFLng(lng);
+                    if (country) setFCountry(country);
+                    if (city) setFCity(city);
+                  }}
                   placeholder={t.locPh} style={inp} t={t}
                 />
                 {fLat && fLng && <div style={{ fontSize: 11, color: "#10b981", marginTop: 4 }}>✓ {fAddr}</div>}
