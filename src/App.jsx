@@ -1533,30 +1533,12 @@ export default function App() {
                 </div>
 
                 <label style={lbl}>{t.expireIn} <span style={{ color: "#ef4444" }}>*</span></label>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {EXPIRY_OPTIONS.map(days => {
-                    const selected = fExpireDays === String(days);
-                    return (
-                      <button
-                        key={days}
-                        type="button"
-                        onClick={() => setFExpireDays(String(days))}
-                        style={{
-                          padding: "8px 14px",
-                          borderRadius: 10,
-                          border: `1.5px solid ${selected ? "#10b981" : "#e0e0d8"}`,
-                          background: selected ? "rgba(16,185,129,.12)" : "#f5f5f0",
-                          color: selected ? "#059669" : "#555",
-                          fontWeight: selected ? 700 : 500,
-                          fontSize: 13,
-                          cursor: "pointer",
-                        }}
-                      >
-                        {days} {t.expireDays}
-                      </button>
-                    );
-                  })}
-                </div>
+                <select value={fExpireDays} onChange={e => setFExpireDays(e.target.value)} style={inp}>
+                  <option value=""></option>
+                  {EXPIRY_OPTIONS.map(days => (
+                    <option key={days} value={days}>{days} {t.expireDays}</option>
+                  ))}
+                </select>
 
                 <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
                   <button onClick={cancelEdit} style={{
