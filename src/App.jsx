@@ -74,6 +74,8 @@ const T = {
     location:"详细地址", locPh:"搜索地址...",
     swapAreas:"意向交换地区", swapAreasPh:"输入地区名，按回车添加",
     swapAreasHint:"如：Downtown、North York、Markham",
+    swapTimes:"意向交换时间", swapTimesHint:"选填，可添加多个时间段",
+    addTime:"添加时间",
     iHave:"我有的冰箱贴", pickMulti:"（可多选）",
     iWant:"想换的冰箱贴", pickMany:"（可多选）",
     contactSection:"联系方式（选填）",
@@ -106,6 +108,14 @@ const T = {
     selectCity:"选择城市",
     allCities:"全部城市",
     areas:"地区",
+    edit:"编辑", save:"保存修改", cancel:"取消",
+    myListings:"我的发布", addAnother:"➕ 发布新的一条",
+    editTitle:"编辑换贴信息",
+    distance:"距离", anyDistance:"不限距离",
+    within:"内", useMyLocation:"使用我的定位",
+    locatingMe:"定位中...", locationDenied:"未授权定位，已使用你发布的地址作为参考位置",
+    noLocationRef:"筛选距离需要先定位，或先发布一条信息",
+    mapsError:"Google 地图加载失败，请检查 API Key 设置（启用计费、启用 Maps JavaScript API + Places API、检查域名白名单）",
   },
   en: {
     title:"⚽ Heytea WC Swap", subtitle:"North America",
@@ -118,6 +128,8 @@ const T = {
     location:"Address", locPh:"Search address...",
     swapAreas:"Preferred swap areas", swapAreasPh:"Type an area, press Enter to add",
     swapAreasHint:"e.g. Downtown, North York, Markham",
+    swapTimes:"Preferred swap time", swapTimesHint:"Optional, add multiple time slots",
+    addTime:"Add time",
     iHave:"I have", pickMulti:"(pick multiple)",
     iWant:"I want", pickMany:"(pick multiple)",
     contactSection:"Contact (optional)",
@@ -150,6 +162,14 @@ const T = {
     selectCity:"Select city",
     allCities:"All cities",
     areas:"Areas",
+    edit:"Edit", save:"Save changes", cancel:"Cancel",
+    myListings:"My listings", addAnother:"➕ Post another one",
+    editTitle:"Edit your listing",
+    distance:"Distance", anyDistance:"Any distance",
+    within:"within", useMyLocation:"Use my location",
+    locatingMe:"Locating...", locationDenied:"Location not granted — using your listing's address as reference",
+    noLocationRef:"Filtering by distance needs your location, or post a listing first",
+    mapsError:"Google Maps failed to load — check API key setup (billing enabled, Maps JavaScript API + Places API enabled, domain allow-list)",
   }
 };
 
@@ -174,6 +194,61 @@ function isMatch(myListing, other) {
   return myHave.some(h => theirWant.includes(h)) && theirHave.some(h => myWant.includes(h));
 }
 
+// Match against a list of my own listings — true if ANY of them match `other`
+function isMatchAny(myListings, other) {
+  if (!myListings || !myListings.length || !other) return false;
+  return myListings.some(mine => isMatch(mine, other));
+}
+
+// Haversine distance in km between two lat/lng points
+function distanceKm(lat1, lng1, lat2, lng2) {
+  if (lat1 == null || lng1 == null || lat2 == null || lng2 == null) return null;
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// Build a flag-circle icon as an SVG data URL, for use as a Google Maps marker icon.
+// Mirrors the <FlagCircle> component's rendering, plus an optional colored ring.
+function buildFlagIconUrl(id, size = 32, ringColor = null, ringWidth = 3) {
+  const m = mFind(id);
+  const r = size / 2;
+  const inner = r - ringWidth - 0.5;
+  let flagSvg;
+  if (!m) {
+    flagSvg = `<circle cx="${r}" cy="${r}" r="${inner}" fill="#888"/>`;
+  } else if (id === "hid") {
+    flagSvg = `<circle cx="${r}" cy="${r}" r="${inner}" fill="#FFD700" stroke="#DAA520" stroke-width="0.5"/>
+      <text x="${r}" y="${r + size * 0.03}" text-anchor="middle" dominant-baseline="central" font-size="${inner * 0.9}" fill="#8B6914" font-weight="700" font-family="sans-serif">?</text>`;
+  } else if (id === "jpn") {
+    flagSvg = `<circle cx="${r}" cy="${r}" r="${inner}" fill="#FFF"/>
+      <circle cx="${r}" cy="${r}" r="${inner * 0.5}" fill="#BC002D"/>`;
+  } else if (id === "sui") {
+    flagSvg = `<circle cx="${r}" cy="${r}" r="${inner}" fill="#F00"/>
+      <rect x="${r - inner * 0.45}" y="${r - inner * 0.12}" width="${inner * 0.9}" height="${inner * 0.24}" rx="1" fill="#FFF"/>
+      <rect x="${r - inner * 0.12}" y="${r - inner * 0.45}" width="${inner * 0.24}" height="${inner * 0.9}" rx="1" fill="#FFF"/>`;
+  } else if (id === "eng") {
+    flagSvg = `<clipPath id="clip-${id}"><circle cx="${r}" cy="${r}" r="${inner}"/></clipPath>
+      <g clip-path="url(#clip-${id})">
+        <rect x="0" y="0" width="${size}" height="${size}" fill="#FFF"/>
+        <rect x="${r - inner * 0.12}" y="0" width="${inner * 0.24}" height="${size}" fill="#CF081F"/>
+        <rect x="0" y="${r - inner * 0.12}" width="${size}" height="${inner * 0.24}" fill="#CF081F"/>
+      </g>`;
+  } else {
+    flagSvg = `<clipPath id="clip-${id}"><circle cx="${r}" cy="${r}" r="${inner}"/></clipPath>
+      <g clip-path="url(#clip-${id})">
+        <rect x="0" y="0" width="${size}" height="${size / 3}" fill="${m.c1}"/>
+        <rect x="0" y="${size / 3}" width="${size}" height="${size / 3}" fill="${m.c2}"/>
+        <rect x="0" y="${size * 2 / 3}" width="${size}" height="${size / 3}" fill="${m.c3}"/>
+      </g>`;
+  }
+  const ring = ringColor ? `<circle cx="${r}" cy="${r}" r="${r - ringWidth / 2}" fill="none" stroke="${ringColor}" stroke-width="${ringWidth}"/>` : "";
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${flagSvg}${ring}</svg>`;
+  return "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg);
+}
+
 function getOwnerToken() {
   let t = localStorage.getItem("heytea-owner");
   if (!t) { t = crypto.randomUUID(); localStorage.setItem("heytea-owner", t); }
@@ -192,10 +267,14 @@ const timeAgo = (ts, t) => {
 
 const GMAP_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY || "";
 
+let __gmapsLoadPromise = null;
 function loadGoogleMaps() {
-  return new Promise((resolve, reject) => {
+  if (__gmapsLoadPromise) return __gmapsLoadPromise;
+  __gmapsLoadPromise = new Promise((resolve, reject) => {
     if (!GMAP_KEY) { reject(new Error("No key")); return; }
     if (window.google?.maps?.places) { resolve(window.google.maps); return; }
+    // Google calls this global if the key/project is misconfigured (billing, restrictions, disabled APIs)
+    window.gm_authFailure = () => { reject(new Error("Google Maps auth failure — check API key, billing, and enabled APIs")); };
     const s = document.createElement("script");
     s.src = `https://maps.googleapis.com/maps/api/js?key=${GMAP_KEY}&libraries=places&callback=__gmCb`;
     s.async = true;
@@ -203,6 +282,7 @@ function loadGoogleMaps() {
     s.onerror = () => reject(new Error("Maps load failed"));
     document.head.appendChild(s);
   });
+  return __gmapsLoadPromise;
 }
 
 // ════════════════════════════════════════════════════════════
@@ -318,6 +398,53 @@ function TagInput({ tags, onChange, placeholder, hint }) {
   );
 }
 
+// ── Swap time input: date + time picker, adds chips ──
+function formatSwapTime(iso, lang) {
+  const d = new Date(iso);
+  if (isNaN(d)) return iso;
+  return d.toLocaleString(lang === "cn" ? "zh-CN" : "en-US", {
+    month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: lang !== "cn",
+  });
+}
+
+function SwapTimeInput({ times, onChange, t, lang }) {
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
+  const add = () => {
+    if (!date || !time) return;
+    const iso = `${date}T${time}`;
+    if (!times.includes(iso)) onChange([...times, iso]);
+    setDate(""); setTime("");
+  };
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: times.length ? 8 : 0 }}>
+        {times.map(iso => (
+          <span key={iso} style={{
+            display: "inline-flex", alignItems: "center", gap: 4,
+            padding: "4px 10px", borderRadius: 16, fontSize: 12, fontWeight: 500,
+            background: "#fff3e0", color: "#b5651d", border: "1px solid #ffe0b2",
+          }}>
+            🕐 {formatSwapTime(iso, lang)}
+            <span onClick={() => onChange(times.filter(x => x !== iso))} style={{ cursor: "pointer", fontSize: 14, lineHeight: 1, color: "#999" }}>×</span>
+          </span>
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 6 }}>
+        <input type="date" value={date} onChange={e => setDate(e.target.value)}
+          style={{ flex: 1, padding: "10px 10px", borderRadius: 10, fontSize: 13, border: "1.5px solid #ddd", background: "#fff", color: "#333", outline: "none", boxSizing: "border-box" }} />
+        <input type="time" value={time} onChange={e => setTime(e.target.value)}
+          style={{ flex: 1, padding: "10px 10px", borderRadius: 10, fontSize: 13, border: "1.5px solid #ddd", background: "#fff", color: "#333", outline: "none", boxSizing: "border-box" }} />
+        <button onClick={add} disabled={!date || !time} style={{
+          padding: "10px 16px", borderRadius: 10, border: "none",
+          background: (date && time) ? "#10b981" : "#e0e0d8", color: "#fff",
+          fontWeight: 600, fontSize: 13, cursor: "pointer",
+        }}>+</button>
+      </div>
+    </div>
+  );
+}
+
 // ── City Selector ──
 function CitySelector({ value, onChange, t }) {
   const ca = CITIES.filter(c => c.country === "🇨🇦");
@@ -344,15 +471,16 @@ function CitySelector({ value, onChange, t }) {
 }
 
 // ── Google Map View (interactive, zoomable) ──
-function GoogleMapView({ listings, onSelect, myListing, selectedCity }) {
+function GoogleMapView({ listings, onSelect, myListings = [], selectedCity, t }) {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersRef = useRef([]);
   const overlaysRef = useRef([]);
   const [gmaps, setGmaps] = useState(null);
+  const [mapError, setMapError] = useState(false);
 
   useEffect(() => {
-    loadGoogleMaps().then(g => setGmaps(g)).catch(() => {});
+    loadGoogleMaps().then(g => setGmaps(g)).catch(() => setMapError(true));
   }, []);
 
   // Init map
@@ -392,39 +520,43 @@ function GoogleMapView({ listings, onSelect, myListing, selectedCity }) {
     markersRef.current = [];
     overlaysRef.current = [];
 
-    const allListings = myListing
-      ? [myListing, ...listings.filter(l => l.id !== myListing.id)]
+    const myIds = new Set(myListings.map(l => l.id));
+    const allListings = myListings.length
+      ? [...myListings, ...listings.filter(l => !myIds.has(l.id))]
       : listings;
 
     allListings.forEach(l => {
       if (!l.lat || !l.lng) return;
-      const isMine = myListing && l.id === myListing.id;
-      const matched = isMatch(myListing, l);
+      const isMine = myIds.has(l.id);
+      const matched = !isMine && isMatchAny(myListings, l);
       const haveArr = toArr(l.have);
-      const firstColor = mColor(haveArr[0]);
       const pos = { lat: l.lat, lng: l.lng };
+      const size = isMine ? 34 : matched ? 32 : 22;
 
-      // Glow circle for matches
+      // Light-green blinking glow ring for matches
       if (matched) {
         const glow = new gmaps.Circle({
           map, center: pos,
-          radius: 800,
+          radius: 700,
           fillColor: "#10b981", fillOpacity: 0.10,
-          strokeColor: "#10b981", strokeOpacity: 0.3, strokeWeight: 2,
+          strokeColor: "#10b981", strokeOpacity: 0.25, strokeWeight: 1.5,
           clickable: false, zIndex: 1,
         });
         overlaysRef.current.push(glow);
-        // Pulse animation
-        let growing = true;
+        // Blink via opacity (lighter/transparent feel rather than radius growth)
+        let t2 = 0;
         const interval = setInterval(() => {
-          const r = glow.getRadius();
-          if (growing) { glow.setRadius(r + 30); if (r >= 1000) growing = false; }
-          else { glow.setRadius(r - 30); if (r <= 800) growing = true; }
+          t2 += 0.12;
+          const wave = (Math.sin(t2) + 1) / 2; // 0..1
+          glow.setOptions({
+            fillOpacity: 0.05 + wave * 0.15,
+            strokeOpacity: 0.15 + wave * 0.25,
+          });
         }, 60);
         glow.__interval = interval;
       }
 
-      // Blue range circle for own listing
+      // Blue range circle for own listing(s)
       if (isMine) {
         const circle = new gmaps.Circle({
           map, center: pos,
@@ -436,19 +568,18 @@ function GoogleMapView({ listings, onSelect, myListing, selectedCity }) {
         overlaysRef.current.push(circle);
       }
 
+      const iconUrl = isMine
+        ? buildFlagIconUrl(haveArr[0], size, "#3b82f6", 3)
+        : matched
+          ? buildFlagIconUrl(haveArr[0], size, "#10b981", 3)
+          : buildFlagIconUrl(haveArr[0], size, "#fff", 2);
+
       const marker = new gmaps.Marker({
         position: pos, map,
         title: l.nickname,
-        icon: {
-          path: gmaps.SymbolPath.CIRCLE,
-          fillColor: isMine ? "#3b82f6" : matched ? "#10b981" : firstColor,
-          fillOpacity: 1,
-          strokeColor: isMine ? "#1d4ed8" : matched ? "#059669" : "#fff",
-          strokeWeight: isMine ? 3 : matched ? 3 : 2,
-          scale: isMine ? 12 : matched ? 11 : 8,
-        },
+        icon: { url: iconUrl, scaledSize: new gmaps.Size(size, size), anchor: new gmaps.Point(size / 2, size / 2) },
         zIndex: isMine ? 100 : matched ? 50 : 1,
-        label: isMine ? { text: "Me", color: "#fff", fontSize: "9px", fontWeight: "600" } : undefined,
+        label: isMine ? { text: "Me", color: "#fff", fontSize: "8px", fontWeight: "700", className: "gmap-me-label" } : undefined,
       });
       marker.addListener("click", () => onSelect(l));
       markersRef.current.push(marker);
@@ -459,9 +590,16 @@ function GoogleMapView({ listings, onSelect, myListing, selectedCity }) {
         if (c.__interval) clearInterval(c.__interval);
       });
     };
-  }, [gmaps, listings, myListing, onSelect]);
+  }, [gmaps, listings, myListings, onSelect]);
 
-  if (!GMAP_KEY) return <FallbackMapView listings={listings} onSelect={onSelect} myListing={myListing} />;
+  if (!GMAP_KEY || mapError) {
+    return (
+      <div>
+        <FallbackMapView listings={listings} onSelect={onSelect} myListings={myListings} />
+        {mapError && <div style={{ fontSize: 11, color: "#ef4444", marginTop: 6 }}>⚠️ {t?.mapsError}</div>}
+      </div>
+    );
+  }
 
   return (
     <div ref={mapRef} style={{
@@ -472,7 +610,7 @@ function GoogleMapView({ listings, onSelect, myListing, selectedCity }) {
 }
 
 // ── Fallback map (no API key) ──
-function FallbackMapView({ listings, onSelect, myListing }) {
+function FallbackMapView({ listings, onSelect, myListings = [] }) {
   const B = { minLat: 43.55, maxLat: 43.92, minLng: -79.75, maxLng: -79.15 };
   const toX = lng => Math.min(100, Math.max(0, ((lng - B.minLng) / (B.maxLng - B.minLng)) * 100));
   const toY = lat => Math.min(100, Math.max(0, (1 - (lat - B.minLat) / (B.maxLat - B.minLat)) * 100));
@@ -482,8 +620,9 @@ function FallbackMapView({ listings, onSelect, myListing }) {
     { n: "Mississauga", x: 18, y: 58 }, { n: "Richmond Hill", x: 58, y: 22 },
   ];
 
-  const allListings = myListing
-    ? [myListing, ...listings.filter(l => l.id !== myListing.id)]
+  const myIds = new Set(myListings.map(l => l.id));
+  const allListings = myListings.length
+    ? [...myListings, ...listings.filter(l => !myIds.has(l.id))]
     : listings;
 
   return (
@@ -498,8 +637,8 @@ function FallbackMapView({ listings, onSelect, myListing }) {
       <span style={{ position: "absolute", bottom: "4%", right: "6%", fontSize: 10, color: "rgba(60,100,140,.35)", fontWeight: 500 }}>Lake Ontario</span>
       {areas.map(a => <span key={a.n} style={{ position: "absolute", left: `${a.x}%`, top: `${a.y}%`, transform: "translate(-50%,-50%)", fontSize: 9, color: "rgba(0,0,0,.18)", fontWeight: 500, pointerEvents: "none" }}>{a.n}</span>)}
       {allListings.map(l => {
-        const isMine = myListing && l.id === myListing.id;
-        const matched = isMatch(myListing, l);
+        const isMine = myIds.has(l.id);
+        const matched = !isMine && isMatchAny(myListings, l);
         const haveArr = toArr(l.have);
         const x = toX(l.lng), y = toY(l.lat);
         return (
@@ -553,9 +692,10 @@ function FallbackMapView({ listings, onSelect, myListing }) {
 }
 
 // ── Address Autocomplete ──
-function AddressInput({ value, onChange, onPlaceSelect, placeholder, style: inputStyle }) {
+function AddressInput({ value, onChange, onPlaceSelect, placeholder, style: inputStyle, t }) {
   const inputRef = useRef(null);
   const acRef = useRef(null);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     if (!GMAP_KEY || acRef.current) return;
@@ -575,16 +715,21 @@ function AddressInput({ value, onChange, onPlaceSelect, placeholder, style: inpu
         }
       });
       acRef.current = ac;
-    }).catch(() => {});
+    }).catch(() => setError(true));
   }, []);
 
-  return <input ref={inputRef} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} style={inputStyle} />;
+  return (
+    <div>
+      <input ref={inputRef} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} style={inputStyle} />
+      {error && <div style={{ fontSize: 11, color: "#ef4444", marginTop: 4 }}>⚠️ {t?.mapsError}</div>}
+    </div>
+  );
 }
 
 // ── Listing Card ──
-function ListingCard({ listing: l, myListing, onContact, onMessage, expanded, onToggle, lang, t }) {
-  const isMine = myListing && l.id === myListing.id;
-  const matched = isMatch(myListing, l);
+function ListingCard({ listing: l, myListings = [], onContact, onMessage, expanded, onToggle, lang, t }) {
+  const isMine = myListings.some(m => m.id === l.id);
+  const matched = !isMine && isMatchAny(myListings, l);
   const haveArr = toArr(l.have);
   const firstColor = mColor(haveArr[0]);
   const hasContact = l.phone || l.whatsapp || l.instagram || l.wechat;
@@ -632,6 +777,19 @@ function ListingCard({ listing: l, myListing, onContact, onMessage, expanded, on
           ))}
         </div>
       )}
+      {/* Swap times */}
+      {l.swap_times?.length > 0 && (
+        <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 6 }}>
+          <span style={{ fontSize: 10, color: "#999" }}>🕐</span>
+          {l.swap_times.map(iso => (
+            <span key={iso} style={{ fontSize: 10, padding: "2px 7px", borderRadius: 8, background: "#fff3e0", color: "#b5651d", fontWeight: 500 }}>{formatSwapTime(iso, lang)}</span>
+          ))}
+        </div>
+      )}
+      {/* Distance from reference point (browse tab) */}
+      {typeof l.__distanceKm === "number" && (
+        <div style={{ fontSize: 10, color: "#999", marginTop: 6 }}>📏 {l.__distanceKm.toFixed(1)} km</div>
+      )}
       {/* Expanded actions */}
       {expanded && !isMine && (
         <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid #eee" }}>
@@ -640,8 +798,8 @@ function ListingCard({ listing: l, myListing, onContact, onMessage, expanded, on
               {t.matchDesc}
             </div>
           )}
-          {!matched && <div style={{ fontSize: 12, color: "#888", marginBottom: 8 }}>{myListing ? t.noMatchYet : t.postFirst}</div>}
-          {myListing && (
+          {!matched && <div style={{ fontSize: 12, color: "#888", marginBottom: 8 }}>{myListings.length ? t.noMatchYet : t.postFirst}</div>}
+          {myListings.length > 0 && (
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={e => { e.stopPropagation(); onMessage(l); }} style={{
                 flex: 1, padding: "10px 0", border: "none", borderRadius: 10,
@@ -854,12 +1012,12 @@ function ChatThread({ ownerToken, otherToken, otherName, onBack, t }) {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 120px)" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0 12px", borderBottom: "1px solid #eee" }}>
+    <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0 12px", borderBottom: "1px solid #eee", flexShrink: 0 }}>
         <button onClick={onBack} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", padding: "4px 8px", color: "#333" }}>←</button>
         <span style={{ fontWeight: 600, fontSize: 15 }}>{otherName}</span>
       </div>
-      <div ref={scrollRef} style={{ flex: 1, overflow: "auto", padding: "12px 0", display: "flex", flexDirection: "column", gap: 6 }}>
+      <div ref={scrollRef} style={{ flex: 1, minHeight: 0, overflow: "auto", padding: "12px 0", display: "flex", flexDirection: "column", gap: 6 }}>
         {messages.map(msg => {
           const isMe = msg.sender_token === ownerToken;
           return (
@@ -879,7 +1037,7 @@ function ChatThread({ ownerToken, otherToken, otherName, onBack, t }) {
           );
         })}
       </div>
-      <div style={{ display: "flex", gap: 8, padding: "10px 0", borderTop: "1px solid #eee" }}>
+      <div style={{ display: "flex", gap: 8, padding: "10px 0", borderTop: "1px solid #eee", flexShrink: 0 }}>
         <input
           value={text}
           onChange={e => setText(e.target.value)}
@@ -907,7 +1065,6 @@ export default function App() {
   const t = T[lang];
   const [tab, setTab] = useState("map");
   const [listings, setListings] = useState([]);
-  const [myListing, setMyListing] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
   const [contactModal, setContactModal] = useState(null);
   const [filterMagnet, setFilterMagnet] = useState("");
@@ -918,6 +1075,14 @@ export default function App() {
   const [chatTarget, setChatTarget] = useState(null);
   const [unreadCount, setUnreadCount] = useState(0);
 
+  // Editing state — which of my listings (if any) is currently being edited. "new" = creating a fresh one.
+  const [editingId, setEditingId] = useState(null);
+
+  // Distance filter state (Discover tab)
+  const [distanceKmFilter, setDistanceKmFilter] = useState(""); // "" = no filter
+  const [myCoords, setMyCoords] = useState(null); // { lat, lng, source: "gps" | "listing" }
+  const [locating, setLocating] = useState(false);
+
   // Form state
   const [fn, setFn] = useState("");
   const [fCity, setFCity] = useState("toronto");
@@ -927,6 +1092,7 @@ export default function App() {
   const [fHave, setFHave] = useState([]);
   const [fWant, setFWant] = useState([]);
   const [fAreas, setFAreas] = useState([]);
+  const [fTimes, setFTimes] = useState([]);
   const [fPhone, setFPhone] = useState("");
   const [fWhatsapp, setFWhatsapp] = useState("");
   const [fInstagram, setFInstagram] = useState("");
@@ -935,16 +1101,18 @@ export default function App() {
 
   const ownerToken = useMemo(() => getOwnerToken(), []);
 
+  const resetForm = () => {
+    setFn(""); setFCity(selectedCity || "toronto"); setFAddr(""); setFLat(null); setFLng(null);
+    setFHave([]); setFWant([]); setFAreas([]); setFTimes([]);
+    setFPhone(""); setFWhatsapp(""); setFInstagram(""); setFWechat("");
+  };
+
   // ── Load listings ──
   useEffect(() => {
     async function load() {
       try {
         const { data } = await supabase.from("listings").select("*").eq("active", true).order("created_at", { ascending: false });
-        if (data) {
-          setListings(data);
-          const mine = data.find(l => l.owner_token === ownerToken);
-          if (mine) setMyListing(mine);
-        }
+        if (data) setListings(data);
       } catch (e) { console.error(e); }
       setLoading(false);
     }
@@ -954,14 +1122,11 @@ export default function App() {
       .on("postgres_changes", { event: "*", schema: "public", table: "listings" }, (payload) => {
         if (payload.eventType === "INSERT") {
           setListings(prev => [payload.new, ...prev.filter(l => l.id !== payload.new.id)]);
-          if (payload.new.owner_token === ownerToken) setMyListing(payload.new);
         } else if (payload.eventType === "UPDATE") {
           if (!payload.new.active) {
             setListings(prev => prev.filter(l => l.id !== payload.new.id));
-            if (payload.new.owner_token === ownerToken) setMyListing(null);
           } else {
             setListings(prev => prev.map(l => l.id === payload.new.id ? payload.new : l));
-            if (payload.new.owner_token === ownerToken) setMyListing(payload.new);
           }
         } else if (payload.eventType === "DELETE") {
           setListings(prev => prev.filter(l => l.id !== payload.old.id));
@@ -989,23 +1154,49 @@ export default function App() {
   useEffect(() => { localStorage.setItem("heytea-lang", lang); }, [lang]);
   useEffect(() => { localStorage.setItem("heytea-city", selectedCity); }, [selectedCity]);
 
+  // All of my own active listings
+  const myListings = useMemo(() => listings.filter(l => l.owner_token === ownerToken), [listings, ownerToken]);
+
+  // ── Geolocation for distance filter ──
+  const requestMyLocation = useCallback(() => {
+    if (!navigator.geolocation) { fallbackToListingCoords(); return; }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { setMyCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude, source: "gps" }); setLocating(false); },
+      () => { fallbackToListingCoords(); setLocating(false); },
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
+    );
+    function fallbackToListingCoords() {
+      const ref = myListings.find(l => l.lat && l.lng);
+      if (ref) setMyCoords({ lat: ref.lat, lng: ref.lng, source: "listing" });
+      else setMyCoords(null);
+    }
+  }, [myListings]);
+
   const filtered = useMemo(() => {
-    let res = listings;
+    let res = listings.filter(l => l.owner_token !== ownerToken);
     if (filterMagnet && filterMagnet !== "__match__") {
       res = res.filter(l => toArr(l.have).includes(filterMagnet));
     }
-    if (filterMagnet === "__match__" && myListing) {
-      res = res.filter(l => isMatch(myListing, l));
+    if (filterMagnet === "__match__") {
+      res = res.filter(l => isMatchAny(myListings, l));
+    }
+    if (distanceKmFilter && myCoords) {
+      const maxKm = Number(distanceKmFilter);
+      res = res
+        .map(l => ({ ...l, __distanceKm: distanceKm(myCoords.lat, myCoords.lng, l.lat, l.lng) }))
+        .filter(l => l.__distanceKm != null && l.__distanceKm <= maxKm)
+        .sort((a, b) => a.__distanceKm - b.__distanceKm);
     }
     return res;
-  }, [listings, filterMagnet, myListing]);
+  }, [listings, filterMagnet, myListings, ownerToken, distanceKmFilter, myCoords]);
 
   const matchCount = useMemo(() => {
-    if (!myListing) return 0;
-    return listings.filter(l => isMatch(myListing, l)).length;
-  }, [listings, myListing]);
+    if (!myListings.length) return 0;
+    return listings.filter(l => l.owner_token !== ownerToken && isMatchAny(myListings, l)).length;
+  }, [listings, myListings, ownerToken]);
 
-  // ── Post listing ──
+  // ── Post a new listing, or save edits to an existing one ──
   const handlePost = useCallback(async () => {
     if (!fn || !fCity || !fAddr || fHave.length === 0 || fWant.length === 0 || posting) return;
     setPosting(true);
@@ -1013,37 +1204,62 @@ export default function App() {
       const city = CITIES.find(c => c.id === fCity);
       const lat = fLat ?? (city ? city.lat + (Math.random() - .5) * .04 : 43.65);
       const lng = fLng ?? (city ? city.lng + (Math.random() - .5) * .06 : -79.38);
-      const { data, error } = await supabase.from("listings").insert({
-        owner_token: ownerToken, nickname: fn, address: fAddr,
-        city: fCity, have: fHave, want: fWant, swap_areas: fAreas,
+      const payload = {
+        nickname: fn, address: fAddr,
+        city: fCity, have: fHave, want: fWant, swap_areas: fAreas, swap_times: fTimes,
         wechat: fWechat || "", phone: fPhone || "",
         whatsapp: fWhatsapp || "", instagram: fInstagram || "",
-        lat, lng, radius: 5,
-      }).select().single();
-      if (error) throw error;
-      setMyListing(data);
-      setListings(prev => [data, ...prev]);
+        lat, lng,
+      };
+      if (editingId && editingId !== "new") {
+        const { data, error } = await supabase.from("listings").update(payload).eq("id", editingId).eq("owner_token", ownerToken).select().single();
+        if (error) throw error;
+        setListings(prev => prev.map(l => l.id === data.id ? data : l));
+      } else {
+        const { data, error } = await supabase.from("listings").insert({ ...payload, owner_token: ownerToken, radius: 5 }).select().single();
+        if (error) throw error;
+        setListings(prev => [data, ...prev]);
+      }
+      setEditingId(null);
+      resetForm();
       setTab("map");
       setSelectedCity(fCity);
-    } catch (e) { console.error(e); alert("Failed to post. Please try again."); }
+    } catch (e) { console.error(e); alert("Failed to save. Please try again."); }
     setPosting(false);
-  }, [fn, fCity, fAddr, fLat, fLng, fHave, fWant, fAreas, fPhone, fWhatsapp, fInstagram, fWechat, posting, ownerToken]);
+  }, [fn, fCity, fAddr, fLat, fLng, fHave, fWant, fAreas, fTimes, fPhone, fWhatsapp, fInstagram, fWechat, posting, ownerToken, editingId]);
 
-  // ── Go offline ──
-  const handleOffline = async () => {
-    if (!myListing) return;
+  // ── Start editing one of my listings ──
+  const startEdit = (listing) => {
+    setFn(listing.nickname || "");
+    setFCity(listing.city || "toronto");
+    setFAddr(listing.address || "");
+    setFLat(listing.lat || null);
+    setFLng(listing.lng || null);
+    setFHave(toArr(listing.have));
+    setFWant(listing.want || []);
+    setFAreas(listing.swap_areas || []);
+    setFTimes(listing.swap_times || []);
+    setFPhone(listing.phone || "");
+    setFWhatsapp(listing.whatsapp || "");
+    setFInstagram(listing.instagram || "");
+    setFWechat(listing.wechat || "");
+    setEditingId(listing.id);
+  };
+
+  const startNew = () => { resetForm(); setEditingId("new"); };
+  const cancelEdit = () => { setEditingId(null); resetForm(); };
+
+  // ── Go offline (delete) one listing ──
+  const handleOffline = async (listing) => {
     try {
-      await supabase.from("listings").update({ active: false }).eq("id", myListing.id);
-      setListings(prev => prev.filter(l => l.id !== myListing.id));
-      setMyListing(null);
-      setFn(""); setFAddr(""); setFLat(null); setFLng(null);
-      setFHave([]); setFWant([]); setFAreas([]);
-      setFPhone(""); setFWhatsapp(""); setFInstagram(""); setFWechat("");
+      await supabase.from("listings").update({ active: false }).eq("id", listing.id).eq("owner_token", ownerToken);
+      setListings(prev => prev.filter(l => l.id !== listing.id));
+      if (editingId === listing.id) { setEditingId(null); resetForm(); }
     } catch (e) { console.error(e); }
   };
 
   const openChat = (listing) => {
-    if (!myListing) return;
+    if (!myListings.length) return;
     setChatTarget({ token: listing.owner_token, name: listing.nickname });
     setTab("msgs");
   };
@@ -1061,7 +1277,7 @@ export default function App() {
   );
 
   return (
-    <div style={{ maxWidth: 440, margin: "0 auto", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+    <div style={{ maxWidth: 440, margin: "0 auto", height: "100dvh", minHeight: "100vh", maxHeight: "100dvh", display: "flex", flexDirection: "column" }}>
 
       {/* ── Header ── */}
       <div style={{ padding: "14px 16px 10px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -1073,7 +1289,7 @@ export default function App() {
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          {myListing && <span style={{ padding: "3px 10px", borderRadius: 16, fontSize: 11, fontWeight: 500, background: "rgba(16,185,129,.1)", color: "#10b981" }}>{t.online}</span>}
+          {myListings.length > 0 && <span style={{ padding: "3px 10px", borderRadius: 16, fontSize: 11, fontWeight: 500, background: "rgba(16,185,129,.1)", color: "#10b981" }}>{t.online}{myListings.length > 1 ? ` ×${myListings.length}` : ""}</span>}
           <button onClick={() => setLang(lang === "cn" ? "en" : "cn")} style={{ padding: "4px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", background: "#f0f0ea", border: "1px solid #ddd", color: "#333" }}>
             {lang === "cn" ? "EN" : "中"}
           </button>
@@ -1081,7 +1297,11 @@ export default function App() {
       </div>
 
       {/* ── Content ── */}
-      <div style={{ flex: 1, padding: "0 16px 88px", overflow: "auto" }}>
+      <div style={{
+        flex: 1, minHeight: 0, overflow: (tab === "msgs" && chatTarget) ? "hidden" : "auto",
+        display: "flex", flexDirection: "column",
+        padding: (tab === "msgs" && chatTarget) ? "0 16px calc(64px + env(safe-area-inset-bottom))" : "0 16px 88px",
+      }}>
 
         {/* MAP TAB */}
         {tab === "map" && (
@@ -1095,14 +1315,15 @@ export default function App() {
             <GoogleMapView
               listings={filtered}
               onSelect={l => { setExpandedId(l.id); setTab("browse"); }}
-              myListing={myListing}
+              myListings={myListings}
               selectedCity={selectedCity}
+              t={t}
             />
 
             {/* Magnet filters */}
             <div style={{ marginTop: 10, display: "flex", gap: 5, flexWrap: "wrap" }}>
               <span onClick={() => setFilterMagnet("")} style={chipStyle(!filterMagnet)}>{t.all}</span>
-              {myListing && <span onClick={() => setFilterMagnet(filterMagnet === "__match__" ? "" : "__match__")} style={{
+              {myListings.length > 0 && <span onClick={() => setFilterMagnet(filterMagnet === "__match__" ? "" : "__match__")} style={{
                 ...chipStyle(filterMagnet === "__match__"),
                 background: filterMagnet === "__match__" ? "#10b981" : "#f5f5f0",
                 color: filterMagnet === "__match__" ? "#fff" : "#555",
@@ -1122,56 +1343,77 @@ export default function App() {
               })}
             </div>
 
-            {!myListing && (
+            {myListings.length === 0 && (
               <div style={{ marginTop: 14, padding: "14px 16px", borderRadius: 14, background: "linear-gradient(135deg,rgba(16,185,129,.05),rgba(59,130,246,.05))", border: "1px solid rgba(16,185,129,.12)" }}>
                 <div style={{ fontSize: 14, fontWeight: 500 }}>{t.postCta}</div>
                 <div style={{ fontSize: 12, color: "#888", marginTop: 3 }}>{t.postCtaSub}</div>
-                <button onClick={() => setTab("post")} style={{ marginTop: 10, padding: "8px 20px", border: "none", borderRadius: 10, background: "#10b981", color: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>{t.goPost}</button>
+                <button onClick={() => { startNew(); setTab("post"); }} style={{ marginTop: 10, padding: "8px 20px", border: "none", borderRadius: 10, background: "#10b981", color: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>{t.goPost}</button>
               </div>
             )}
 
-            {myListing && matchCount > 0 && (
+            {myListings.length > 0 && matchCount > 0 && (
               <div style={{ marginTop: 14 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, color: "#10b981" }}>{t.swappable} ({matchCount})</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {filtered.filter(l => isMatch(myListing, l))
-                    .map(l => <ListingCard key={l.id} listing={l} myListing={myListing} onContact={setContactModal} onMessage={openChat} expanded={expandedId === l.id} onToggle={() => setExpandedId(expandedId === l.id ? null : l.id)} lang={lang} t={t} />)}
+                  {filtered.filter(l => isMatchAny(myListings, l))
+                    .map(l => <ListingCard key={l.id} listing={l} myListings={myListings} onContact={setContactModal} onMessage={openChat} expanded={expandedId === l.id} onToggle={() => setExpandedId(expandedId === l.id ? null : l.id)} lang={lang} t={t} />)}
                 </div>
               </div>
             )}
           </div>
         )}
 
-        {/* BROWSE TAB */}
+        {/* BROWSE / DISCOVER TAB */}
         {tab === "browse" && (
           <div>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
               <span onClick={() => setFilterMagnet("")} style={chipStyle(!filterMagnet)}>{t.all} ({listings.length})</span>
-              {myListing && <span onClick={() => setFilterMagnet(filterMagnet === "__match__" ? "" : "__match__")} style={{
+              {myListings.length > 0 && <span onClick={() => setFilterMagnet(filterMagnet === "__match__" ? "" : "__match__")} style={{
                 ...chipStyle(filterMagnet === "__match__"),
                 background: filterMagnet === "__match__" ? "#10b981" : "#f5f5f0",
                 color: filterMagnet === "__match__" ? "#fff" : "#555",
               }}>{t.swappable} ({matchCount})</span>}
             </div>
+
+            {/* Distance filter */}
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 10, padding: "8px 10px", background: "#f9f9f5", border: "1px solid #eee", borderRadius: 12 }}>
+              <span style={{ fontSize: 12, color: "#888" }}>📏 {t.distance}</span>
+              <select value={distanceKmFilter} onChange={e => setDistanceKmFilter(e.target.value)} style={{
+                padding: "5px 8px", borderRadius: 8, fontSize: 12, fontWeight: 500,
+                border: "1.5px solid #ddd", background: "#fff", color: "#333", outline: "none", cursor: "pointer",
+              }}>
+                <option value="">{t.anyDistance}</option>
+                {[5, 10, 25, 50, 100].map(km => <option key={km} value={km}>{km} km {t.within}</option>)}
+              </select>
+              {distanceKmFilter && !myCoords && (
+                <button onClick={requestMyLocation} disabled={locating} style={{
+                  padding: "5px 10px", borderRadius: 8, border: "none", background: "#3b82f6", color: "#fff",
+                  fontWeight: 600, fontSize: 11, cursor: "pointer",
+                }}>{locating ? t.locatingMe : t.useMyLocation}</button>
+              )}
+              {distanceKmFilter && myCoords && (
+                <span style={{ fontSize: 10, color: myCoords.source === "gps" ? "#10b981" : "#b5651d" }}>
+                  {myCoords.source === "gps" ? "📍 GPS" : `⚠️ ${t.locationDenied}`}
+                </span>
+              )}
+            </div>
+            {distanceKmFilter && !myCoords && (
+              <div style={{ fontSize: 11, color: "#b5651d", marginBottom: 10 }}>{t.noLocationRef}</div>
+            )}
+
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {filtered.map(l => <ListingCard key={l.id} listing={l} myListing={myListing} onContact={setContactModal} onMessage={openChat} expanded={expandedId === l.id} onToggle={() => setExpandedId(expandedId === l.id ? null : l.id)} lang={lang} t={t} />)}
+              {filtered.map(l => <ListingCard key={l.id} listing={l} myListings={myListings} onContact={setContactModal} onMessage={openChat} expanded={expandedId === l.id} onToggle={() => setExpandedId(expandedId === l.id ? null : l.id)} lang={lang} t={t} />)}
               {filtered.length === 0 && <div style={{ textAlign: "center", padding: 40, color: "#aaa" }}><div style={{ fontSize: 28, marginBottom: 6 }}>🔍</div><div style={{ fontSize: 13 }}>{t.noResults}</div></div>}
             </div>
           </div>
         )}
 
-        {/* POST TAB */}
+        {/* POST / MINE TAB */}
         {tab === "post" && (
           <div>
-            {myListing ? (
+            {editingId ? (
               <div>
-                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>{t.myInfo}</div>
-                <ListingCard listing={myListing} myListing={myListing} expanded onToggle={() => {}} onContact={() => {}} onMessage={() => {}} lang={lang} t={t} />
-                <button onClick={handleOffline} style={{ width: "100%", marginTop: 10, padding: "10px 0", border: "1.5px solid #ef4444", borderRadius: 10, background: "transparent", color: "#ef4444", fontWeight: 500, fontSize: 14, cursor: "pointer" }}>{t.offline}</button>
-              </div>
-            ) : (
-              <div>
-                <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 14 }}>{t.postTitle}</div>
+                <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 14 }}>{editingId === "new" ? t.postTitle : t.editTitle}</div>
 
                 <label style={{ ...lbl, marginTop: 0 }}>{t.nickname}</label>
                 <input value={fn} onChange={e => setFn(e.target.value)} placeholder={t.nickPh} style={inp} />
@@ -1183,12 +1425,16 @@ export default function App() {
                 <AddressInput
                   value={fAddr} onChange={setFAddr}
                   onPlaceSelect={({ address, lat, lng }) => { setFAddr(address); setFLat(lat); setFLng(lng); }}
-                  placeholder={t.locPh} style={inp}
+                  placeholder={t.locPh} style={inp} t={t}
                 />
                 {fLat && fLng && <div style={{ fontSize: 11, color: "#10b981", marginTop: 4 }}>✓ {fAddr}</div>}
 
                 <label style={lbl}>{t.swapAreas}</label>
                 <TagInput tags={fAreas} onChange={setFAreas} placeholder={t.swapAreasPh} hint={t.swapAreasHint} />
+
+                <label style={lbl}>{t.swapTimes}</label>
+                <SwapTimeInput times={fTimes} onChange={setFTimes} t={t} lang={lang} />
+                <div style={{ fontSize: 10, color: "#aaa", marginTop: 4 }}>{t.swapTimesHint}</div>
 
                 <label style={lbl}>{t.iHave} <span style={{ fontWeight: 400, color: "#aaa" }}>{t.pickMulti}</span></label>
                 <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
@@ -1228,12 +1474,44 @@ export default function App() {
                 </div>
                 <div style={{ fontSize: 10, color: "#aaa", marginTop: 4 }}>{t.contactNote}</div>
 
-                <button onClick={handlePost} disabled={!canPost || posting} style={{
-                  width: "100%", marginTop: 18, padding: "12px 0", border: "none", borderRadius: 12,
-                  background: canPost ? "#10b981" : "#ccc",
-                  color: "#fff", fontWeight: 600, fontSize: 15, cursor: "pointer",
-                  opacity: canPost ? 1 : .5,
-                }}>{posting ? t.publishing : t.publish}</button>
+                <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
+                  <button onClick={cancelEdit} style={{
+                    padding: "12px 18px", border: "1.5px solid #ddd", borderRadius: 12,
+                    background: "transparent", color: "#666", fontWeight: 500, fontSize: 15, cursor: "pointer",
+                  }}>{t.cancel}</button>
+                  <button onClick={handlePost} disabled={!canPost || posting} style={{
+                    flex: 1, padding: "12px 0", border: "none", borderRadius: 12,
+                    background: canPost ? "#10b981" : "#ccc",
+                    color: "#fff", fontWeight: 600, fontSize: 15, cursor: "pointer",
+                    opacity: canPost ? 1 : .5,
+                  }}>{posting ? t.publishing : (editingId === "new" ? t.publish : t.save)}</button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>{t.myListings}</div>
+                {myListings.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: 30, color: "#aaa" }}>
+                    <div style={{ fontSize: 28, marginBottom: 6 }}>➕</div>
+                    <div style={{ fontSize: 13 }}>{t.postCtaSub}</div>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {myListings.map(l => (
+                      <div key={l.id}>
+                        <ListingCard listing={l} myListings={myListings} expanded onToggle={() => {}} onContact={() => {}} onMessage={() => {}} lang={lang} t={t} />
+                        <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+                          <button onClick={() => startEdit(l)} style={{ flex: 1, padding: "9px 0", border: "1.5px solid #3b82f6", borderRadius: 10, background: "transparent", color: "#3b82f6", fontWeight: 500, fontSize: 13, cursor: "pointer" }}>{t.edit}</button>
+                          <button onClick={() => handleOffline(l)} style={{ flex: 1, padding: "9px 0", border: "1.5px solid #ef4444", borderRadius: 10, background: "transparent", color: "#ef4444", fontWeight: 500, fontSize: 13, cursor: "pointer" }}>{t.offline}</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <button onClick={startNew} style={{
+                  width: "100%", marginTop: 14, padding: "11px 0", border: "1.5px dashed #10b981", borderRadius: 12,
+                  background: "rgba(16,185,129,.05)", color: "#10b981", fontWeight: 600, fontSize: 14, cursor: "pointer",
+                }}>{t.addAnother}</button>
               </div>
             )}
           </div>
@@ -1244,7 +1522,9 @@ export default function App() {
           chatTarget ? (
             <ChatThread ownerToken={ownerToken} otherToken={chatTarget.token} otherName={chatTarget.name} onBack={() => setChatTarget(null)} t={t} />
           ) : (
-            <ChatView ownerToken={ownerToken} allListings={listings} t={t} lang={lang} onOpenChat={openChatDirect} />
+            <div style={{ paddingBottom: 88, overflow: "auto" }}>
+              <ChatView ownerToken={ownerToken} allListings={listings} t={t} lang={lang} onOpenChat={openChatDirect} />
+            </div>
           )
         )}
       </div>
@@ -1262,7 +1542,7 @@ export default function App() {
           { id: "map", icon: "📍", label: t.map },
           { id: "browse", icon: "🔍", label: t.browse },
           { id: "msgs", icon: "💬", label: t.msgs, badge: unreadCount },
-          { id: "post", icon: myListing ? "👤" : "➕", label: myListing ? t.mine : t.post },
+          { id: "post", icon: myListings.length > 0 ? "👤" : "➕", label: myListings.length > 0 ? t.mine : t.post },
         ].map(x => (
           <button key={x.id} onClick={() => { setTab(x.id); setExpandedId(null); if (x.id !== "msgs") setChatTarget(null); }} style={{
             position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 1,
