@@ -68,14 +68,14 @@ const T = {
     active:"条活跃", matches:"个匹配", online:"已上线",
     map:"地图", browse:"浏览", post:"发布", mine:"我的", msgs:"消息",
     all:"全部", swappable:"可互换",
+    available:"可换国家",
     postTitle:"发布换贴信息",
     nickname:"昵称", nickPh:"怎么称呼你",
-    city:"所在城市", cityPh:"选择城市",
+    country:"国家",
+    city:"所在城市", cityPh:"输入或搜索城市",
     location:"详细地址", locPh:"搜索地址...",
     swapAreas:"意向交换地区", swapAreasPh:"输入地区名，按回车添加",
     swapAreasHint:"如：Downtown、North York、Markham",
-    swapTimes:"意向交换时间", swapTimesHint:"选填，可添加多个时间段",
-    addTime:"添加时间",
     iHave:"我有的冰箱贴", pickMulti:"（可多选）",
     iWant:"想换的冰箱贴", pickMany:"（可多选）",
     contactSection:"联系方式（选填）",
@@ -122,14 +122,14 @@ const T = {
     active:"active", matches:"matches", online:"Online",
     map:"Map", browse:"Browse", post:"Post", mine:"Mine", msgs:"Chat",
     all:"All", swappable:"Swappable",
+    available:"Available",
     postTitle:"Post your magnet",
     nickname:"Nickname", nickPh:"What should we call you?",
-    city:"City", cityPh:"Select city",
+    country:"Country",
+    city:"City", cityPh:"Type or search city",
     location:"Address", locPh:"Search address...",
     swapAreas:"Preferred swap areas", swapAreasPh:"Type an area, press Enter to add",
     swapAreasHint:"e.g. Downtown, North York, Markham",
-    swapTimes:"Preferred swap time", swapTimesHint:"Optional, add multiple time slots",
-    addTime:"Add time",
     iHave:"I have", pickMulti:"(pick multiple)",
     iWant:"I want", pickMany:"(pick multiple)",
     contactSection:"Contact (optional)",
@@ -183,6 +183,21 @@ const mColor = (id) => { const m = mFind(id); if (!m) return "#888"; return m.c1
 
 // Normalize have field: always return an array
 const toArr = (v) => Array.isArray(v) ? v : (v ? [v] : []);
+const countryFromCityId = (cityId) => CITIES.find(c => c.id === cityId)?.country === "🇺🇸" ? "us" : "ca";
+const countryLabel = (code) => code === "us" ? "USA" : "Canada";
+
+function useViewportWidth() {
+  const [width, setWidth] = useState(() => typeof window === "undefined" ? 0 : window.innerWidth);
+
+  useEffect(() => {
+    const onResize = () => setWidth(window.innerWidth);
+    onResize();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  return width;
+}
 
 // Match logic: any of my haves is in their wants, AND any of their haves is in my wants
 function isMatch(myListing, other) {
@@ -273,13 +288,24 @@ function loadGoogleMaps() {
   __gmapsLoadPromise = new Promise((resolve, reject) => {
     if (!GMAP_KEY) { reject(new Error("No key")); return; }
     if (window.google?.maps?.places) { resolve(window.google.maps); return; }
+    const timeout = setTimeout(() => reject(new Error("Maps load timed out")), 8000);
     // Google calls this global if the key/project is misconfigured (billing, restrictions, disabled APIs)
-    window.gm_authFailure = () => { reject(new Error("Google Maps auth failure — check API key, billing, and enabled APIs")); };
+    window.gm_authFailure = () => {
+      clearTimeout(timeout);
+      reject(new Error("Google Maps auth failure - check API key, billing, and enabled APIs"));
+    };
     const s = document.createElement("script");
     s.src = `https://maps.googleapis.com/maps/api/js?key=${GMAP_KEY}&libraries=places&callback=__gmCb`;
     s.async = true;
-    window.__gmCb = () => { delete window.__gmCb; resolve(window.google.maps); };
-    s.onerror = () => reject(new Error("Maps load failed"));
+    window.__gmCb = () => {
+      clearTimeout(timeout);
+      delete window.__gmCb;
+      resolve(window.google.maps);
+    };
+    s.onerror = () => {
+      clearTimeout(timeout);
+      reject(new Error("Maps load failed"));
+    };
     document.head.appendChild(s);
   });
   return __gmapsLoadPromise;
@@ -399,53 +425,6 @@ function TagInput({ tags, onChange, placeholder, hint }) {
 }
 
 // ── Swap time input: date + time picker, adds chips ──
-function formatSwapTime(iso, lang) {
-  const d = new Date(iso);
-  if (isNaN(d)) return iso;
-  return d.toLocaleString(lang === "cn" ? "zh-CN" : "en-US", {
-    month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: lang !== "cn",
-  });
-}
-
-function SwapTimeInput({ times, onChange, t, lang }) {
-  const [date, setDate] = useState("");
-  const [time, setTime] = useState("");
-  const add = () => {
-    if (!date || !time) return;
-    const iso = `${date}T${time}`;
-    if (!times.includes(iso)) onChange([...times, iso]);
-    setDate(""); setTime("");
-  };
-  return (
-    <div>
-      <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: times.length ? 8 : 0 }}>
-        {times.map(iso => (
-          <span key={iso} style={{
-            display: "inline-flex", alignItems: "center", gap: 4,
-            padding: "4px 10px", borderRadius: 16, fontSize: 12, fontWeight: 500,
-            background: "#fff3e0", color: "#b5651d", border: "1px solid #ffe0b2",
-          }}>
-            🕐 {formatSwapTime(iso, lang)}
-            <span onClick={() => onChange(times.filter(x => x !== iso))} style={{ cursor: "pointer", fontSize: 14, lineHeight: 1, color: "#999" }}>×</span>
-          </span>
-        ))}
-      </div>
-      <div style={{ display: "flex", gap: 6 }}>
-        <input type="date" value={date} onChange={e => setDate(e.target.value)}
-          style={{ flex: 1, padding: "10px 10px", borderRadius: 10, fontSize: 13, border: "1.5px solid #ddd", background: "#fff", color: "#333", outline: "none", boxSizing: "border-box" }} />
-        <input type="time" value={time} onChange={e => setTime(e.target.value)}
-          style={{ flex: 1, padding: "10px 10px", borderRadius: 10, fontSize: 13, border: "1.5px solid #ddd", background: "#fff", color: "#333", outline: "none", boxSizing: "border-box" }} />
-        <button onClick={add} disabled={!date || !time} style={{
-          padding: "10px 16px", borderRadius: 10, border: "none",
-          background: (date && time) ? "#10b981" : "#e0e0d8", color: "#fff",
-          fontWeight: 600, fontSize: 13, cursor: "pointer",
-        }}>+</button>
-      </div>
-    </div>
-  );
-}
-
-// ── City Selector ──
 function CitySelector({ value, onChange, t }) {
   const ca = CITIES.filter(c => c.country === "🇨🇦");
   const us = CITIES.filter(c => c.country === "🇺🇸");
@@ -471,7 +450,49 @@ function CitySelector({ value, onChange, t }) {
 }
 
 // ── Google Map View (interactive, zoomable) ──
-function GoogleMapView({ listings, onSelect, myListings = [], selectedCity, t }) {
+function CityInput({ value, country, onChange, onCitySelect, placeholder, style: inputStyle, t }) {
+  const inputRef = useRef(null);
+  const acRef = useRef(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    if (!GMAP_KEY) return;
+    if (acRef.current) {
+      acRef.current.setComponentRestrictions({ country: country || ["ca", "us"] });
+      return;
+    }
+    loadGoogleMaps().then(gmaps => {
+      if (!inputRef.current) return;
+      const ac = new gmaps.places.Autocomplete(inputRef.current, {
+        types: ["(cities)"],
+        componentRestrictions: { country: country || ["ca", "us"] },
+        fields: ["formatted_address", "geometry", "name"],
+      });
+      ac.addListener("place_changed", () => {
+        const place = ac.getPlace();
+        const cityName = place.name || place.formatted_address || value;
+        onChange(cityName);
+        if (place?.geometry?.location) {
+          onCitySelect?.({
+            city: cityName,
+            lat: place.geometry.location.lat(),
+            lng: place.geometry.location.lng(),
+          });
+        }
+      });
+      acRef.current = ac;
+    }).catch(() => setError(true));
+  }, [country]);
+
+  return (
+    <div>
+      <input ref={inputRef} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} style={inputStyle} />
+      {error && <div style={{ fontSize: 11, color: "#ef4444", marginTop: 4 }}>âš ï¸ {t?.mapsError}</div>}
+    </div>
+  );
+}
+
+function GoogleMapView({ listings, onSelect, myListings = [], selectedCity, t, isWide = false }) {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersRef = useRef([]);
@@ -486,19 +507,24 @@ function GoogleMapView({ listings, onSelect, myListings = [], selectedCity, t })
   // Init map
   useEffect(() => {
     if (!gmaps || !mapRef.current || mapInstanceRef.current) return;
-    const initCity = CITIES.find(c => c.id === selectedCity) || CITIES[0];
-    mapInstanceRef.current = new gmaps.Map(mapRef.current, {
-      center: { lat: initCity.lat, lng: initCity.lng },
-      zoom: initCity.zoom,
-      zoomControl: true,
-      mapTypeControl: false,
-      streetViewControl: false,
-      fullscreenControl: false,
-      styles: [
-        { featureType: "poi", stylers: [{ visibility: "off" }] },
-        { featureType: "transit", stylers: [{ visibility: "off" }] },
-      ],
-    });
+    try {
+      const initCity = CITIES.find(c => c.id === selectedCity) || CITIES[0];
+      mapInstanceRef.current = new gmaps.Map(mapRef.current, {
+        center: { lat: initCity.lat, lng: initCity.lng },
+        zoom: initCity.zoom,
+        zoomControl: true,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
+        styles: [
+          { featureType: "poi", stylers: [{ visibility: "off" }] },
+          { featureType: "transit", stylers: [{ visibility: "off" }] },
+        ],
+      });
+    } catch (e) {
+      console.error(e);
+      setMapError(true);
+    }
   }, [gmaps]);
 
   // Pan to selected city
@@ -592,10 +618,10 @@ function GoogleMapView({ listings, onSelect, myListings = [], selectedCity, t })
     };
   }, [gmaps, listings, myListings, onSelect]);
 
-  if (!GMAP_KEY || mapError) {
+  if (!GMAP_KEY || mapError || !gmaps) {
     return (
       <div>
-        <FallbackMapView listings={listings} onSelect={onSelect} myListings={myListings} />
+        <FallbackMapView listings={listings} onSelect={onSelect} myListings={myListings} isWide={isWide} />
         {mapError && <div style={{ fontSize: 11, color: "#ef4444", marginTop: 6 }}>⚠️ {t?.mapsError}</div>}
       </div>
     );
@@ -603,14 +629,14 @@ function GoogleMapView({ listings, onSelect, myListings = [], selectedCity, t })
 
   return (
     <div ref={mapRef} style={{
-      width: "100%", height: 300, borderRadius: 16,
+      width: "100%", height: isWide ? "clamp(360px, 48vh, 560px)" : 300, borderRadius: 16,
       overflow: "hidden", border: "1px solid #e0e0d8", background: "#e9f2e9",
     }} />
   );
 }
 
 // ── Fallback map (no API key) ──
-function FallbackMapView({ listings, onSelect, myListings = [] }) {
+function FallbackMapView({ listings, onSelect, myListings = [], isWide = false }) {
   const B = { minLat: 43.55, maxLat: 43.92, minLng: -79.75, maxLng: -79.15 };
   const toX = lng => Math.min(100, Math.max(0, ((lng - B.minLng) / (B.maxLng - B.minLng)) * 100));
   const toY = lat => Math.min(100, Math.max(0, (1 - (lat - B.minLat) / (B.maxLat - B.minLat)) * 100));
@@ -627,12 +653,10 @@ function FallbackMapView({ listings, onSelect, myListings = [] }) {
 
   return (
     <div style={{
-      position: "relative", width: "100%", paddingBottom: "72%",
+      position: "relative", width: "100%", height: isWide ? "clamp(360px, 48vh, 560px)" : "auto", paddingBottom: isWide ? 0 : "72%",
       background: "linear-gradient(145deg,#e9f2e9,#d6e6d6 50%,#ccdccc)",
       borderRadius: 16, overflow: "hidden", border: "1px solid #e0e0d8",
     }}>
-      {[25, 50, 75].map(p => <div key={`h${p}`} style={{ position: "absolute", left: 0, right: 0, top: `${p}%`, height: 1, background: "rgba(0,0,0,.04)" }} />)}
-      {[25, 50, 75].map(p => <div key={`v${p}`} style={{ position: "absolute", top: 0, bottom: 0, left: `${p}%`, width: 1, background: "rgba(0,0,0,.04)" }} />)}
       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "16%", background: "linear-gradient(to bottom,rgba(100,160,210,.1),rgba(100,160,210,.25))" }} />
       <span style={{ position: "absolute", bottom: "4%", right: "6%", fontSize: 10, color: "rgba(60,100,140,.35)", fontWeight: 500 }}>Lake Ontario</span>
       {areas.map(a => <span key={a.n} style={{ position: "absolute", left: `${a.x}%`, top: `${a.y}%`, transform: "translate(-50%,-50%)", fontSize: 9, color: "rgba(0,0,0,.18)", fontWeight: 500, pointerEvents: "none" }}>{a.n}</span>)}
@@ -692,18 +716,22 @@ function FallbackMapView({ listings, onSelect, myListings = [] }) {
 }
 
 // ── Address Autocomplete ──
-function AddressInput({ value, onChange, onPlaceSelect, placeholder, style: inputStyle, t }) {
+function AddressInput({ value, country, onChange, onPlaceSelect, placeholder, style: inputStyle, t }) {
   const inputRef = useRef(null);
   const acRef = useRef(null);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    if (!GMAP_KEY || acRef.current) return;
+    if (!GMAP_KEY) return;
+    if (acRef.current) {
+      acRef.current.setComponentRestrictions({ country: country || ["ca", "us"] });
+      return;
+    }
     loadGoogleMaps().then(gmaps => {
       if (!inputRef.current) return;
       const ac = new gmaps.places.Autocomplete(inputRef.current, {
         types: ["address"],
-        componentRestrictions: { country: ["ca", "us"] },
+        componentRestrictions: { country: country || ["ca", "us"] },
         fields: ["formatted_address", "geometry"],
       });
       ac.addListener("place_changed", () => {
@@ -716,7 +744,7 @@ function AddressInput({ value, onChange, onPlaceSelect, placeholder, style: inpu
       });
       acRef.current = ac;
     }).catch(() => setError(true));
-  }, []);
+  }, [country]);
 
   return (
     <div>
@@ -755,6 +783,7 @@ function ListingCard({ listing: l, myListings = [], onContact, onMessage, expand
             {matched && <span style={{ fontSize: 10, color: "#10b981", fontWeight: 600, background: "rgba(16,185,129,.1)", padding: "2px 8px", borderRadius: 10 }}>{t.matchLabel}</span>}
           </div>
           <div style={{ fontSize: 11, color: "#888", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {l.country && <span>{countryLabel(l.country)} · </span>}
             {l.city && <span>{CITIES.find(c => c.id === l.city)?.name || l.city} · </span>}
             {l.address} · {timeAgo(l.created_at, t)}
           </div>
@@ -774,15 +803,6 @@ function ListingCard({ listing: l, myListings = [], onContact, onMessage, expand
           <span style={{ fontSize: 10, color: "#999" }}>📍</span>
           {l.swap_areas.map(a => (
             <span key={a} style={{ fontSize: 10, padding: "2px 7px", borderRadius: 8, background: "#f0f7ff", color: "#5b8cb5", fontWeight: 500 }}>{a}</span>
-          ))}
-        </div>
-      )}
-      {/* Swap times */}
-      {l.swap_times?.length > 0 && (
-        <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 6 }}>
-          <span style={{ fontSize: 10, color: "#999" }}>🕐</span>
-          {l.swap_times.map(iso => (
-            <span key={iso} style={{ fontSize: 10, padding: "2px 7px", borderRadius: 8, background: "#fff3e0", color: "#b5651d", fontWeight: 500 }}>{formatSwapTime(iso, lang)}</span>
           ))}
         </div>
       )}
@@ -1085,14 +1105,14 @@ export default function App() {
 
   // Form state
   const [fn, setFn] = useState("");
-  const [fCity, setFCity] = useState("toronto");
+  const [fCountry, setFCountry] = useState("ca");
+  const [fCity, setFCity] = useState("");
   const [fAddr, setFAddr] = useState("");
   const [fLat, setFLat] = useState(null);
   const [fLng, setFLng] = useState(null);
   const [fHave, setFHave] = useState([]);
   const [fWant, setFWant] = useState([]);
   const [fAreas, setFAreas] = useState([]);
-  const [fTimes, setFTimes] = useState([]);
   const [fPhone, setFPhone] = useState("");
   const [fWhatsapp, setFWhatsapp] = useState("");
   const [fInstagram, setFInstagram] = useState("");
@@ -1102,8 +1122,9 @@ export default function App() {
   const ownerToken = useMemo(() => getOwnerToken(), []);
 
   const resetForm = () => {
-    setFn(""); setFCity(selectedCity || "toronto"); setFAddr(""); setFLat(null); setFLng(null);
-    setFHave([]); setFWant([]); setFAreas([]); setFTimes([]);
+    const defaultCountry = countryFromCityId(selectedCity);
+    setFn(""); setFCountry(defaultCountry); setFCity(CITIES.find(c => c.id === selectedCity)?.name || ""); setFAddr(""); setFLat(null); setFLng(null);
+    setFHave([]); setFWant([]); setFAreas([]);
     setFPhone(""); setFWhatsapp(""); setFInstagram(""); setFWechat("");
   };
 
@@ -1121,7 +1142,9 @@ export default function App() {
     const ch = supabase.channel("listings-changes")
       .on("postgres_changes", { event: "*", schema: "public", table: "listings" }, (payload) => {
         if (payload.eventType === "INSERT") {
-          setListings(prev => [payload.new, ...prev.filter(l => l.id !== payload.new.id)]);
+          if (payload.new.active !== false) {
+            setListings(prev => [payload.new, ...prev.filter(l => l.id !== payload.new.id)]);
+          }
         } else if (payload.eventType === "UPDATE") {
           if (!payload.new.active) {
             setListings(prev => prev.filter(l => l.id !== payload.new.id));
@@ -1154,8 +1177,10 @@ export default function App() {
   useEffect(() => { localStorage.setItem("heytea-lang", lang); }, [lang]);
   useEffect(() => { localStorage.setItem("heytea-city", selectedCity); }, [selectedCity]);
 
+  const activeListings = useMemo(() => listings.filter(l => l.active !== false), [listings]);
+
   // All of my own active listings
-  const myListings = useMemo(() => listings.filter(l => l.owner_token === ownerToken), [listings, ownerToken]);
+  const myListings = useMemo(() => activeListings.filter(l => l.owner_token === ownerToken), [activeListings, ownerToken]);
 
   // ── Geolocation for distance filter ──
   const requestMyLocation = useCallback(() => {
@@ -1174,7 +1199,7 @@ export default function App() {
   }, [myListings]);
 
   const filtered = useMemo(() => {
-    let res = listings.filter(l => l.owner_token !== ownerToken);
+    let res = activeListings.filter(l => l.owner_token !== ownerToken);
     if (filterMagnet && filterMagnet !== "__match__") {
       res = res.filter(l => toArr(l.have).includes(filterMagnet));
     }
@@ -1189,24 +1214,36 @@ export default function App() {
         .sort((a, b) => a.__distanceKm - b.__distanceKm);
     }
     return res;
-  }, [listings, filterMagnet, myListings, ownerToken, distanceKmFilter, myCoords]);
+  }, [activeListings, filterMagnet, myListings, ownerToken, distanceKmFilter, myCoords]);
+
+  const availableMagnets = useMemo(() => {
+    const counts = new Map();
+    activeListings
+      .filter(l => l.owner_token !== ownerToken)
+      .forEach(l => {
+        toArr(l.have).forEach(id => counts.set(id, (counts.get(id) || 0) + 1));
+      });
+    return MAGNETS
+      .map(m => ({ ...m, count: counts.get(m.id) || 0 }))
+      .filter(m => m.count > 0);
+  }, [activeListings, ownerToken]);
 
   const matchCount = useMemo(() => {
     if (!myListings.length) return 0;
-    return listings.filter(l => l.owner_token !== ownerToken && isMatchAny(myListings, l)).length;
-  }, [listings, myListings, ownerToken]);
+    return activeListings.filter(l => l.owner_token !== ownerToken && isMatchAny(myListings, l)).length;
+  }, [activeListings, myListings, ownerToken]);
 
   // ── Post a new listing, or save edits to an existing one ──
   const handlePost = useCallback(async () => {
     if (!fn || !fCity || !fAddr || fHave.length === 0 || fWant.length === 0 || posting) return;
     setPosting(true);
     try {
-      const city = CITIES.find(c => c.id === fCity);
+      const city = CITIES.find(c => (c.id === fCity || c.name === fCity) && countryFromCityId(c.id) === fCountry);
       const lat = fLat ?? (city ? city.lat + (Math.random() - .5) * .04 : 43.65);
       const lng = fLng ?? (city ? city.lng + (Math.random() - .5) * .06 : -79.38);
       const payload = {
         nickname: fn, address: fAddr,
-        city: fCity, have: fHave, want: fWant, swap_areas: fAreas, swap_times: fTimes,
+        country: fCountry, city: fCity, have: fHave, want: fWant, swap_areas: fAreas,
         wechat: fWechat || "", phone: fPhone || "",
         whatsapp: fWhatsapp || "", instagram: fInstagram || "",
         lat, lng,
@@ -1214,31 +1251,34 @@ export default function App() {
       if (editingId && editingId !== "new") {
         const { data, error } = await supabase.from("listings").update(payload).eq("id", editingId).eq("owner_token", ownerToken).select().single();
         if (error) throw error;
-        setListings(prev => prev.map(l => l.id === data.id ? data : l));
+        setListings(prev => data.active === false ? prev.filter(l => l.id !== data.id) : prev.map(l => l.id === data.id ? data : l));
       } else {
         const { data, error } = await supabase.from("listings").insert({ ...payload, owner_token: ownerToken, radius: 5 }).select().single();
         if (error) throw error;
-        setListings(prev => [data, ...prev]);
+        if (data.active !== false) setListings(prev => [data, ...prev]);
       }
       setEditingId(null);
       resetForm();
       setTab("map");
-      setSelectedCity(fCity);
-    } catch (e) { console.error(e); alert("Failed to save. Please try again."); }
+      if (city) setSelectedCity(city.id);
+    } catch (e) {
+      console.error(e);
+      alert(`Failed to save: ${e?.message || "Please try again."}`);
+    }
     setPosting(false);
-  }, [fn, fCity, fAddr, fLat, fLng, fHave, fWant, fAreas, fTimes, fPhone, fWhatsapp, fInstagram, fWechat, posting, ownerToken, editingId]);
+  }, [fn, fCountry, fCity, fAddr, fLat, fLng, fHave, fWant, fAreas, fPhone, fWhatsapp, fInstagram, fWechat, posting, ownerToken, editingId]);
 
   // ── Start editing one of my listings ──
   const startEdit = (listing) => {
     setFn(listing.nickname || "");
-    setFCity(listing.city || "toronto");
+    setFCountry(listing.country || countryFromCityId(listing.city));
+    setFCity(CITIES.find(c => c.id === listing.city)?.name || listing.city || "");
     setFAddr(listing.address || "");
     setFLat(listing.lat || null);
     setFLng(listing.lng || null);
     setFHave(toArr(listing.have));
     setFWant(listing.want || []);
     setFAreas(listing.swap_areas || []);
-    setFTimes(listing.swap_times || []);
     setFPhone(listing.phone || "");
     setFWhatsapp(listing.whatsapp || "");
     setFInstagram(listing.instagram || "");
@@ -1252,7 +1292,7 @@ export default function App() {
   // ── Go offline (delete) one listing ──
   const handleOffline = async (listing) => {
     try {
-      await supabase.from("listings").update({ active: false }).eq("id", listing.id).eq("owner_token", ownerToken);
+      await supabase.from("listings").delete().eq("id", listing.id).eq("owner_token", ownerToken);
       setListings(prev => prev.filter(l => l.id !== listing.id));
       if (editingId === listing.id) { setEditingId(null); resetForm(); }
     } catch (e) { console.error(e); }
@@ -1266,7 +1306,15 @@ export default function App() {
 
   const openChatDirect = (token, name) => setChatTarget({ token, name });
 
-  const canPost = fn && fCity && fAddr && fHave.length > 0 && fWant.length > 0;
+  const canPost = fn && fCountry && fCity && fAddr && fHave.length > 0 && fWant.length > 0;
+  const viewportWidth = useViewportWidth();
+  const isWide = viewportWidth >= 768;
+  const appMaxWidth = isWide ? 1120 : 440;
+  const appPaddingX = isWide ? 24 : 16;
+  const contentGrid = isWide
+    ? { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10, alignItems: "start" }
+    : { display: "flex", flexDirection: "column", gap: 6 };
+  const formShell = isWide ? { maxWidth: 720, margin: "0 auto" } : {};
 
   const inp = { width: "100%", padding: "10px 14px", borderRadius: 10, fontSize: 14, border: "1.5px solid #ddd", background: "#fff", color: "#333", outline: "none", boxSizing: "border-box" };
   const lbl = { fontSize: 13, fontWeight: 500, color: "#666", display: "block", marginTop: 16, marginBottom: 6 };
@@ -1277,18 +1325,18 @@ export default function App() {
   );
 
   return (
-    <div style={{ maxWidth: 440, margin: "0 auto", height: "100dvh", minHeight: "100vh", maxHeight: "100dvh", display: "flex", flexDirection: "column" }}>
+    <div style={{ width: "100%", maxWidth: appMaxWidth, margin: "0 auto", height: "100dvh", minHeight: "100vh", maxHeight: "100dvh", display: "flex", flexDirection: "column" }}>
 
       {/* ── Header ── */}
-      <div style={{ padding: "14px 16px 10px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div>
-          <div style={{ fontSize: 19, fontWeight: 600, letterSpacing: -.3 }}>{t.title}</div>
+      <div style={{ padding: `14px ${appPaddingX}px 10px`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 19, fontWeight: 600, letterSpacing: -.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</div>
           <div style={{ fontSize: 11, color: "#888", marginTop: 1 }}>
-            {t.subtitle} · {listings.length} {t.active}
+            {t.subtitle} · {activeListings.length} {t.active}
             {matchCount > 0 && <span style={{ color: "#10b981", fontWeight: 600 }}> · {matchCount} {t.matches}</span>}
           </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
           {myListings.length > 0 && <span style={{ padding: "3px 10px", borderRadius: 16, fontSize: 11, fontWeight: 500, background: "rgba(16,185,129,.1)", color: "#10b981" }}>{t.online}{myListings.length > 1 ? ` ×${myListings.length}` : ""}</span>}
           <button onClick={() => setLang(lang === "cn" ? "en" : "cn")} style={{ padding: "4px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", background: "#f0f0ea", border: "1px solid #ddd", color: "#333" }}>
             {lang === "cn" ? "EN" : "中"}
@@ -1300,7 +1348,7 @@ export default function App() {
       <div style={{
         flex: 1, minHeight: 0, overflow: (tab === "msgs" && chatTarget) ? "hidden" : "auto",
         display: "flex", flexDirection: "column",
-        padding: (tab === "msgs" && chatTarget) ? "0 16px calc(64px + env(safe-area-inset-bottom))" : "0 16px 88px",
+        padding: (tab === "msgs" && chatTarget) ? `0 ${appPaddingX}px calc(64px + env(safe-area-inset-bottom))` : `0 ${appPaddingX}px ${isWide ? "96px" : "88px"}`,
       }}>
 
         {/* MAP TAB */}
@@ -1318,6 +1366,7 @@ export default function App() {
               myListings={myListings}
               selectedCity={selectedCity}
               t={t}
+              isWide={isWide}
             />
 
             {/* Magnet filters */}
@@ -1354,7 +1403,7 @@ export default function App() {
             {myListings.length > 0 && matchCount > 0 && (
               <div style={{ marginTop: 14 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, color: "#10b981" }}>{t.swappable} ({matchCount})</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={contentGrid}>
                   {filtered.filter(l => isMatchAny(myListings, l))
                     .map(l => <ListingCard key={l.id} listing={l} myListings={myListings} onContact={setContactModal} onMessage={openChat} expanded={expandedId === l.id} onToggle={() => setExpandedId(expandedId === l.id ? null : l.id)} lang={lang} t={t} />)}
                 </div>
@@ -1367,13 +1416,34 @@ export default function App() {
         {tab === "browse" && (
           <div>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
-              <span onClick={() => setFilterMagnet("")} style={chipStyle(!filterMagnet)}>{t.all} ({listings.length})</span>
+              <span onClick={() => setFilterMagnet("")} style={chipStyle(!filterMagnet)}>{t.all} ({activeListings.length})</span>
               {myListings.length > 0 && <span onClick={() => setFilterMagnet(filterMagnet === "__match__" ? "" : "__match__")} style={{
                 ...chipStyle(filterMagnet === "__match__"),
                 background: filterMagnet === "__match__" ? "#10b981" : "#f5f5f0",
                 color: filterMagnet === "__match__" ? "#fff" : "#555",
               }}>{t.swappable} ({matchCount})</span>}
             </div>
+
+            {availableMagnets.length > 0 && (
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 12, color: "#888", marginBottom: 6 }}>{t.available}</div>
+                <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                  {availableMagnets.map(m => {
+                    const c = mColor(m.id);
+                    const on = filterMagnet === m.id;
+                    return (
+                      <span key={m.id} onClick={() => setFilterMagnet(on ? "" : m.id)} style={{
+                        display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 9px", borderRadius: 14, fontSize: 11, cursor: "pointer", fontWeight: 500,
+                        background: on ? c + "15" : "#f5f5f0", color: on ? c : "#777",
+                        border: `1px solid ${on ? c + "40" : "transparent"}`, userSelect: "none",
+                      }}>
+                        <FlagCircle id={m.id} size={14} /> {m[lang]} ({m.count})
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Distance filter */}
             <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 10, padding: "8px 10px", background: "#f9f9f5", border: "1px solid #eee", borderRadius: 12 }}>
@@ -1401,7 +1471,7 @@ export default function App() {
               <div style={{ fontSize: 11, color: "#b5651d", marginBottom: 10 }}>{t.noLocationRef}</div>
             )}
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <div style={contentGrid}>
               {filtered.map(l => <ListingCard key={l.id} listing={l} myListings={myListings} onContact={setContactModal} onMessage={openChat} expanded={expandedId === l.id} onToggle={() => setExpandedId(expandedId === l.id ? null : l.id)} lang={lang} t={t} />)}
               {filtered.length === 0 && <div style={{ textAlign: "center", padding: 40, color: "#aaa" }}><div style={{ fontSize: 28, marginBottom: 6 }}>🔍</div><div style={{ fontSize: 13 }}>{t.noResults}</div></div>}
             </div>
@@ -1412,18 +1482,33 @@ export default function App() {
         {tab === "post" && (
           <div>
             {editingId ? (
-              <div>
+              <div style={formShell}>
                 <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 14 }}>{editingId === "new" ? t.postTitle : t.editTitle}</div>
 
                 <label style={{ ...lbl, marginTop: 0 }}>{t.nickname}</label>
                 <input value={fn} onChange={e => setFn(e.target.value)} placeholder={t.nickPh} style={inp} />
 
+                <label style={lbl}>{t.country}</label>
+                <select value={fCountry} onChange={e => { setFCountry(e.target.value); setFCity(""); setFAddr(""); setFLat(null); setFLng(null); }} style={inp}>
+                  <option value="ca">Canada</option>
+                  <option value="us">USA</option>
+                </select>
+
                 <label style={lbl}>{t.city}</label>
-                <CitySelector value={fCity} onChange={setFCity} t={t} />
+                <CityInput
+                  value={fCity}
+                  country={fCountry}
+                  onChange={setFCity}
+                  onCitySelect={({ lat, lng }) => { setFLat(lat); setFLng(lng); }}
+                  placeholder={t.cityPh}
+                  style={inp}
+                  t={t}
+                />
 
                 <label style={lbl}>{t.location}</label>
                 <AddressInput
                   value={fAddr} onChange={setFAddr}
+                  country={fCountry}
                   onPlaceSelect={({ address, lat, lng }) => { setFAddr(address); setFLat(lat); setFLng(lng); }}
                   placeholder={t.locPh} style={inp} t={t}
                 />
@@ -1431,10 +1516,6 @@ export default function App() {
 
                 <label style={lbl}>{t.swapAreas}</label>
                 <TagInput tags={fAreas} onChange={setFAreas} placeholder={t.swapAreasPh} hint={t.swapAreasHint} />
-
-                <label style={lbl}>{t.swapTimes}</label>
-                <SwapTimeInput times={fTimes} onChange={setFTimes} t={t} lang={lang} />
-                <div style={{ fontSize: 10, color: "#aaa", marginTop: 4 }}>{t.swapTimesHint}</div>
 
                 <label style={lbl}>{t.iHave} <span style={{ fontWeight: 400, color: "#aaa" }}>{t.pickMulti}</span></label>
                 <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
@@ -1488,7 +1569,7 @@ export default function App() {
                 </div>
               </div>
             ) : (
-              <div>
+              <div style={formShell}>
                 <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>{t.myListings}</div>
                 {myListings.length === 0 ? (
                   <div style={{ textAlign: "center", padding: 30, color: "#aaa" }}>
@@ -1523,7 +1604,7 @@ export default function App() {
             <ChatThread ownerToken={ownerToken} otherToken={chatTarget.token} otherName={chatTarget.name} onBack={() => setChatTarget(null)} t={t} />
           ) : (
             <div style={{ paddingBottom: 88, overflow: "auto" }}>
-              <ChatView ownerToken={ownerToken} allListings={listings} t={t} lang={lang} onOpenChat={openChatDirect} />
+              <ChatView ownerToken={ownerToken} allListings={activeListings} t={t} lang={lang} onOpenChat={openChatDirect} />
             </div>
           )
         )}
@@ -1535,7 +1616,7 @@ export default function App() {
       {/* ── Bottom Nav ── */}
       <div style={{
         position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)",
-        width: "100%", maxWidth: 440, display: "flex", justifyContent: "space-around", alignItems: "center",
+        width: "100%", maxWidth: appMaxWidth, display: "flex", justifyContent: "space-around", alignItems: "center",
         padding: "6px 0 max(6px,env(safe-area-inset-bottom))", background: "#fff", borderTop: "1px solid #eee", zIndex: 50,
       }}>
         {[
