@@ -73,7 +73,7 @@ const CITIES = [
 const T = {
   cn: {
     title:"⚽ 喜茶世界杯换贴", subtitle:"北美",
-    active:"条活跃", matches:"个匹配", online:"已上线",
+    active:"条活跃", matches:"个匹配",
     map:"地图", browse:"浏览", post:"发布", mine:"我的", msgs:"消息",
     all:"全部", swappable:"可互换",
     available:"可换国家",
@@ -123,7 +123,7 @@ const T = {
   },
   en: {
     title:"⚽ Heytea WC Swap", subtitle:"North America",
-    active:"active", matches:"matches", online:"Online",
+    active:"active", matches:"matches",
     map:"Map", browse:"Browse", post:"Post", mine:"Mine", msgs:"Chat",
     all:"All", swappable:"Swappable",
     available:"Available",
@@ -1249,8 +1249,21 @@ export default function App() {
     if (!navigator.geolocation) { setLocationError(true); return; }
     setLocating(true);
     setLocationError(false);
+    // Some mobile browsers never invoke either callback (e.g. system Location Services
+    // is off) instead of honoring the `timeout` option below — this guarantees the
+    // "Locating..." spinner can't hang forever regardless of platform behavior.
+    let settled = false;
+    const giveUp = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      setLocating(false);
+      setLocationError(true);
+    }, 10000);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(giveUp);
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
         const nearest = nearestCityByCoords(lat, lng);
@@ -1258,7 +1271,13 @@ export default function App() {
         setLocating(false);
         setShowLocationModal(false);
       },
-      () => { setLocating(false); setLocationError(true); },
+      () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(giveUp);
+        setLocating(false);
+        setLocationError(true);
+      },
       { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
     );
   }, []);
@@ -1506,7 +1525,6 @@ export default function App() {
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-          {myListings.length > 0 && <span style={{ padding: "3px 10px", borderRadius: 16, fontSize: 11, fontWeight: 500, background: "rgba(16,185,129,.1)", color: "#10b981" }}>{t.online}{myListings.length > 1 ? ` ×${myListings.length}` : ""}</span>}
           <button onClick={() => setLang(lang === "cn" ? "en" : "cn")} style={{ padding: "4px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", background: "#f0f0ea", border: "1px solid #ddd", color: "#333" }}>
             {lang === "cn" ? "EN" : "中"}
           </button>
