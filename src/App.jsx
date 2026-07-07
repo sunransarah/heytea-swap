@@ -1111,6 +1111,7 @@ export default function App() {
   });
   const [locating, setLocating] = useState(false);
   const [locationError, setLocationError] = useState(false);
+  const [locationErrorDetail, setLocationErrorDetail] = useState("");
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [locationSearchInput, setLocationSearchInput] = useState("");
 
@@ -1246,9 +1247,10 @@ export default function App() {
 
   // ── Geolocation for distance filter ──
   const fetchGpsLocation = useCallback(() => {
-    if (!navigator.geolocation) { setLocationError(true); return; }
+    if (!navigator.geolocation) { setLocationError(true); setLocationErrorDetail("no navigator.geolocation"); return; }
     setLocating(true);
     setLocationError(false);
+    setLocationErrorDetail("");
     // Some mobile browsers never invoke either callback (e.g. system Location Services
     // is off) instead of honoring the `timeout` option below — this guarantees the
     // "Locating..." spinner can't hang forever regardless of platform behavior.
@@ -1258,6 +1260,7 @@ export default function App() {
       settled = true;
       setLocating(false);
       setLocationError(true);
+      setLocationErrorDetail("timed out — browser never responded");
     }, 10000);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -1271,12 +1274,14 @@ export default function App() {
         setLocating(false);
         setShowLocationModal(false);
       },
-      () => {
+      (err) => {
         if (settled) return;
         settled = true;
         clearTimeout(giveUp);
         setLocating(false);
         setLocationError(true);
+        setLocationErrorDetail(err ? `code ${err.code}: ${err.message}` : "unknown error");
+        console.error("Geolocation error:", err);
       },
       { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
     );
@@ -1876,7 +1881,9 @@ export default function App() {
               📍 {locating ? t.locatingMe : t.useMyLocation}
             </button>
             {locationError && (
-              <div style={{ fontSize: 12, color: "#ef4444", marginTop: 8 }}>{t.locationErrorGps}</div>
+              <div style={{ fontSize: 12, color: "#ef4444", marginTop: 8 }}>
+                {t.locationErrorGps}{locationErrorDetail && ` (${locationErrorDetail})`}
+              </div>
             )}
 
             <div style={{ fontSize: 12, color: "#aaa", margin: "14px 0 8px", textAlign: "center" }}>
