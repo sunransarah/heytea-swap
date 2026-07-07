@@ -60,23 +60,23 @@ create policy "Public read active"
   on listings for select
   using (true);
 
--- 4. Anyone can insert a listing
+-- 4. Only the signed-in owner can insert a listing under their own id.
 drop policy if exists "Public insert" on listings;
-create policy "Public insert"
+drop policy if exists "Owner insert" on listings;
+create policy "Owner insert"
   on listings for insert
-  with check (true);
+  with check (auth.uid()::text = owner_token);
 
--- 5. Anyone can update/delete listings.
--- The app still checks owner_token in update/delete queries.
+-- 5. Only the signed-in owner can update/delete their own listings.
 drop policy if exists "Owner update" on listings;
 create policy "Owner update"
   on listings for update
-  using (true);
+  using (auth.uid()::text = owner_token);
 
 drop policy if exists "Owner delete" on listings;
 create policy "Owner delete"
   on listings for delete
-  using (true);
+  using (auth.uid()::text = owner_token);
 
 -- 6. Enable realtime for live listing updates
 do $$
@@ -103,10 +103,12 @@ drop policy if exists "Public read messages" on messages;
 create policy "Public read messages" on messages for select using (true);
 
 drop policy if exists "Public insert messages" on messages;
-create policy "Public insert messages" on messages for insert with check (true);
+drop policy if exists "Sender insert messages" on messages;
+create policy "Sender insert messages" on messages for insert with check (auth.uid()::text = sender_token);
 
 drop policy if exists "Public update messages" on messages;
-create policy "Public update messages" on messages for update using (true);
+drop policy if exists "Receiver update messages" on messages;
+create policy "Receiver update messages" on messages for update using (auth.uid()::text = receiver_token);
 
 do $$
 begin
@@ -118,3 +120,34 @@ end $$;
 -- 8. Indexes
 create index if not exists idx_listings_owner_token on listings (owner_token);
 create index if not exists idx_messages_conversation on messages (conversation_id);
+
+-- 9. Profiles: durable per-account display name (auto-generated, user-editable),
+-- independent of any single listing so it survives across devices/browsers.
+create table if not exists profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  nickname text not null,
+  created_at timestamptz default now()
+);
+
+alter table profiles enable row level security;
+
+drop policy if exists "Owner read profile" on profiles;
+create policy "Owner read profile" on profiles for select using (auth.uid() = id);
+
+drop policy if exists "Owner insert profile" on profiles;
+create policy "Owner insert profile" on profiles for insert with check (auth.uid() = id);
+
+drop policy if exists "Owner update profile" on profiles;
+create policy "Owner update profile" on profiles for update using (auth.uid() = id);
+
+-- 10. Actually delete listings once they expire, instead of just hiding them client-side.
+-- Requires the pg_cron extension (enable it here, or via Supabase Dashboard -> Database -> Extensions
+-- if this CREATE EXTENSION statement errors due to permissions on your plan).
+create extension if not exists pg_cron;
+
+-- Re-running this is safe: cron.schedule() updates the existing job when the name already exists.
+select cron.schedule(
+  'delete-expired-listings',
+  '0 0 * * *', -- once a day, at midnight UTC
+  $$delete from listings where expires_at < now()$$
+);
