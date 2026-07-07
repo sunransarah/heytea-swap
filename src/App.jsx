@@ -1283,7 +1283,7 @@ export default function App() {
         setLocationErrorDetail(err ? `code ${err.code}: ${err.message}` : "unknown error");
         console.error("Geolocation error:", err);
       },
-      { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 300000 }
     );
   }, []);
 
