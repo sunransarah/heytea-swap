@@ -118,7 +118,7 @@ const T = {
     mapsError:"Google 地图加载失败，请检查 API Key 设置（启用计费、启用 Maps JavaScript API + Places API、检查域名白名单）",
     mapSearch:"搜索地址、商场或地标...",
     setLocation:"设置位置", changeLocation:"更改位置",
-    locationErrorGps:"无法获取定位，请手动搜索",
+    locationErrorGps:"无法获取定位，请手动搜索；如果浏览器已拒绝，请在系统设置里重新允许定位",
     signInDesc:"登录后即可发布、查看和接收消息", signInGoogle:"使用 Google 登录", signOut:"退出登录",
   },
   en: {
@@ -168,7 +168,7 @@ const T = {
     mapsError:"Google Maps failed to load — check API key setup (billing enabled, Maps JavaScript API + Places API enabled, domain allow-list)",
     mapSearch:"Search an address, mall, or landmark...",
     setLocation:"Set your location", changeLocation:"Change location",
-    locationErrorGps:"Couldn't get your location — search instead",
+    locationErrorGps:"Couldn't get your location — search instead; if denied, re-enable location in browser settings",
     signInDesc:"Sign in to post, browse, and receive messages", signInGoogle:"Continue with Google", signOut:"Sign out",
   }
 };
@@ -1114,6 +1114,7 @@ export default function App() {
   const [locationErrorDetail, setLocationErrorDetail] = useState("");
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [locationSearchInput, setLocationSearchInput] = useState("");
+  const autoLocationPromptRef = useRef(false);
 
   // Form state
   const [fCountry, setFCountry] = useState("ca");
@@ -1126,7 +1127,6 @@ export default function App() {
   const [fAreas, setFAreas] = useState([]);
   const [fExpireDays, setFExpireDays] = useState("3");
   const [posting, setPosting] = useState(false);
-  const autoCityLocatedRef = useRef(false);
 
   // undefined = still checking; null = signed out; object = signed in
   const [session, setSession] = useState(undefined);
@@ -1238,6 +1238,13 @@ export default function App() {
   useEffect(() => { localStorage.setItem("heytea-city", selectedCity); }, [selectedCity]);
   useEffect(() => { localStorage.setItem("heytea-my-location", JSON.stringify(myLocation)); }, [myLocation]);
 
+  useEffect(() => {
+    if (tab !== "map" || myLocation || autoLocationPromptRef.current) return;
+    autoLocationPromptRef.current = true;
+    setShowLocationModal(true);
+    setLocationSearchInput("");
+  }, [tab, myLocation]);
+
   // Keep selectedCity (used for map default center/country defaults) in sync with the current location.
   useEffect(() => {
     if (!myLocation) return;
@@ -1283,16 +1290,9 @@ export default function App() {
         setLocationErrorDetail(err ? `code ${err.code}: ${err.message}` : "unknown error");
         console.error("Geolocation error:", err);
       },
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 300000 }
+      { enableHighAccuracy: false, timeout: 15000, maximumAge: 0 }
     );
   }, []);
-
-  // First-ever visit with nothing persisted yet: default to GPS, like Too Good To Go.
-  useEffect(() => {
-    if (autoCityLocatedRef.current || myLocation) return;
-    autoCityLocatedRef.current = true;
-    fetchGpsLocation();
-  }, [myLocation, fetchGpsLocation]);
 
   const activeListings = useMemo(() => listings.filter(l => l.active !== false && !isExpiredListing(l)), [listings]);
 
