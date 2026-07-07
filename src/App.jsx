@@ -1258,22 +1258,28 @@ export default function App() {
     setLocating(true);
     setLocationError(false);
     setLocationErrorDetail("");
-    // Some mobile browsers never invoke either callback (e.g. system Location Services
-    // is off) instead of honoring the `timeout` option below — this guarantees the
-    // "Locating..." spinner can't hang forever regardless of platform behavior.
+    // Some mobile Chrome builds leave a bare getCurrentPosition() call hanging
+    // indefinitely (a documented Chromium quirk: it's more reliable once a
+    // watchPosition is active), so we watch and stop after the first fix.
+    // The safety-net timeout below stays longer than the browser's own `timeout`
+    // option so it never preempts a response that's still legitimately in flight.
     let settled = false;
+    let watchId = null;
+    const stopWatching = () => { if (watchId != null) navigator.geolocation.clearWatch(watchId); };
     const giveUp = setTimeout(() => {
       if (settled) return;
       settled = true;
+      stopWatching();
       setLocating(false);
       setLocationError(true);
       setLocationErrorDetail("timed out — browser never responded");
-    }, 10000);
-    navigator.geolocation.getCurrentPosition(
+    }, 18000);
+    watchId = navigator.geolocation.watchPosition(
       (pos) => {
         if (settled) return;
         settled = true;
         clearTimeout(giveUp);
+        stopWatching();
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
         const nearest = nearestCityByCoords(lat, lng);
@@ -1285,6 +1291,7 @@ export default function App() {
         if (settled) return;
         settled = true;
         clearTimeout(giveUp);
+        stopWatching();
         setLocating(false);
         setLocationError(true);
         setLocationErrorDetail(err ? `code ${err.code}: ${err.message}` : "unknown error");
