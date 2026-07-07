@@ -1320,15 +1320,11 @@ export default function App() {
     setShowLocationModal(false);
   }, []);
 
-  const filtered = useMemo(() => {
+  // Active listings narrowed by location/distance only (not by magnet filter) — shared
+  // by `filtered` and `availableMagnets` so the country chips reflect the same distance cutoff.
+  const distanceFilteredListings = useMemo(() => {
     const includePreview = chatPreviewListing && !activeListings.some(l => l.id === chatPreviewListing.id);
     let res = includePreview ? [chatPreviewListing, ...activeListings] : activeListings;
-    if (filterMagnet && filterMagnet !== "__match__") {
-      res = res.filter(l => toArr(l.have).includes(filterMagnet));
-    }
-    if (filterMagnet === "__match__") {
-      res = res.filter(l => l.owner_token !== ownerToken && isMatchAny(myListings, l));
-    }
     const ref = locationReferenceCoords;
     if (ref) {
       res = res.map(l => {
@@ -1341,13 +1337,24 @@ export default function App() {
       const maxKm = Number(distanceKmFilter);
       res = res.filter(l => l.owner_token === ownerToken || (l.__distanceKm != null && l.__distanceKm <= maxKm));
     }
-    if (browseSort === "nearest" && ref) {
+    return res;
+  }, [activeListings, chatPreviewListing, ownerToken, distanceKmFilter, locationReferenceCoords]);
+
+  const filtered = useMemo(() => {
+    let res = distanceFilteredListings;
+    if (filterMagnet && filterMagnet !== "__match__") {
+      res = res.filter(l => toArr(l.have).includes(filterMagnet));
+    }
+    if (filterMagnet === "__match__") {
+      res = res.filter(l => l.owner_token !== ownerToken && isMatchAny(myListings, l));
+    }
+    if (browseSort === "nearest" && locationReferenceCoords) {
       res = [...res].sort((a, b) => (a.__distanceKm ?? Number.MAX_SAFE_INTEGER) - (b.__distanceKm ?? Number.MAX_SAFE_INTEGER));
     } else {
       res = [...res].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
     }
     return res;
-  }, [activeListings, chatPreviewListing, filterMagnet, myListings, ownerToken, distanceKmFilter, locationReferenceCoords, browseSort]);
+  }, [distanceFilteredListings, filterMagnet, myListings, ownerToken, browseSort, locationReferenceCoords]);
 
   const mapReferenceCoords = useMemo(() => {
     return locationReferenceCoords;
@@ -1371,7 +1378,7 @@ export default function App() {
 
   const availableMagnets = useMemo(() => {
     const counts = new Map();
-    activeListings
+    distanceFilteredListings
       .filter(l => l.owner_token !== ownerToken)
       .forEach(l => {
         toArr(l.have).forEach(id => counts.set(id, (counts.get(id) || 0) + 1));
@@ -1379,7 +1386,7 @@ export default function App() {
     return MAGNETS
       .map(m => ({ ...m, count: counts.get(m.id) || 0 }))
       .filter(m => m.count > 0);
-  }, [activeListings, ownerToken]);
+  }, [distanceFilteredListings, ownerToken]);
 
   const matchCount = useMemo(() => {
     if (!myListings.length) return 0;
