@@ -39,32 +39,11 @@ const MAGNETS = [
 ];
 
 // ════════════════════════════════════════════════════════════
-//  CITIES
+//  WORLD VIEW — default map center/zoom when no location is known yet.
+//  Mainland China isn't supported yet (see chinaNotSupported) — a future phase may add it via Amap.
 // ════════════════════════════════════════════════════════════
 
-const CITIES = [
-  { id:"toronto",    name:"Toronto",           country:"🇨🇦", lat:43.6532, lng:-79.3832, zoom:12 },
-  { id:"markham",    name:"Markham",            country:"🇨🇦", lat:43.8561, lng:-79.3370, zoom:13 },
-  { id:"scarborough",name:"Scarborough",        country:"🇨🇦", lat:43.7731, lng:-79.2577, zoom:13 },
-  { id:"richmond",   name:"Richmond",           country:"🇨🇦", lat:49.1666, lng:-123.1336,zoom:13 },
-  { id:"burnaby",    name:"Burnaby",            country:"🇨🇦", lat:49.2488, lng:-122.9805,zoom:13 },
-  { id:"nyc",        name:"New York City",      country:"🇺🇸", lat:40.7128, lng:-74.0060, zoom:12 },
-  { id:"brooklyn",   name:"Brooklyn",           country:"🇺🇸", lat:40.6782, lng:-73.9442, zoom:13 },
-  { id:"flushing",   name:"Flushing",           country:"🇺🇸", lat:40.7654, lng:-73.8318, zoom:14 },
-  { id:"lic",        name:"Long Island City",   country:"🇺🇸", lat:40.7447, lng:-73.9485, zoom:14 },
-  { id:"la",         name:"Los Angeles",        country:"🇺🇸", lat:34.0522, lng:-118.2437,zoom:11 },
-  { id:"beverly",    name:"Beverly Hills",      country:"🇺🇸", lat:34.0736, lng:-118.4004,zoom:14 },
-  { id:"irvine",     name:"Irvine",             country:"🇺🇸", lat:33.6846, lng:-117.8265,zoom:13 },
-  { id:"rowland",    name:"Rowland Heights",    country:"🇺🇸", lat:33.9761, lng:-117.9053,zoom:14 },
-  { id:"sanjose",    name:"San Jose",           country:"🇺🇸", lat:37.3382, lng:-121.8863,zoom:12 },
-  { id:"milpitas",   name:"Milpitas",           country:"🇺🇸", lat:37.4323, lng:-121.8996,zoom:14 },
-  { id:"berkeley",   name:"Berkeley",           country:"🇺🇸", lat:37.8716, lng:-122.2727,zoom:14 },
-  { id:"seattle",    name:"Seattle",            country:"🇺🇸", lat:47.6062, lng:-122.3321,zoom:12 },
-  { id:"houston",    name:"Houston",            country:"🇺🇸", lat:29.7604, lng:-95.3698, zoom:12 },
-  { id:"boston",      name:"Boston",             country:"🇺🇸", lat:42.3601, lng:-71.0589, zoom:13 },
-  { id:"tysons",     name:"Tysons (DC Metro)",  country:"🇺🇸", lat:38.9187, lng:-77.2311, zoom:14 },
-  { id:"jerseycity", name:"Jersey City",        country:"🇺🇸", lat:40.7178, lng:-74.0431, zoom:13 },
-];
+const WORLD_VIEW = { lat: 20, lng: 10, zoom: 2 };
 
 // ════════════════════════════════════════════════════════════
 //  TRANSLATIONS
@@ -72,16 +51,14 @@ const CITIES = [
 
 const T = {
   cn: {
-    title:"⚽ 喜茶世界杯换贴", subtitle:"北美",
-    active:"条活跃", matches:"个匹配",
+    title:"⚽ 喜茶世界杯换贴", subtitle:"海外版",
+    active:"条帖子", matches:"个匹配",
     map:"地图", browse:"浏览", post:"发布", mine:"我的", msgs:"消息",
     all:"全部", swappable:"可互换",
     available:"可换国家",
     optional:"选填",
     postTitle:"发布换贴信息",
     postingAs:"当前昵称", editNickname:"修改",
-    country:"国家",
-    city:"所在城市", cityPh:"输入或搜索城市",
     location:"详细地址", locPh:"搜索地址...",
     swapAreas:"意向交换地区", swapAreasPh:"输入地区名，按回车添加",
     swapAreasHint:"如：Downtown、North York、Markham",
@@ -105,9 +82,6 @@ const T = {
     chatPh:"输入消息...", send:"发送",
     noChats:"暂无消息", noChatsDesc:"和其他人交换冰箱贴时会在这里显示消息",
     me:"我",
-    selectCity:"选择城市",
-    allCities:"全部城市",
-    areas:"地区",
     edit:"编辑", save:"保存修改", cancel:"取消",
     myListings:"我的发布", addAnother:"➕ 发布新的一条",
     editTitle:"编辑换贴信息",
@@ -120,18 +94,23 @@ const T = {
     setLocation:"设置位置", changeLocation:"更改位置",
     locationErrorGps:"无法获取定位，请手动搜索；如果浏览器已拒绝，请在系统设置里重新允许定位",
     signInDesc:"登录后即可发布、查看和接收消息", signInGoogle:"使用 Google 登录", signOut:"退出登录",
+    groupSwap:"多人交换", createGroupChat:"组建群聊", openGroupChat:"进入群聊",
+    groupTitle:(n) => `${n}人交换群`,
+    ringLabel:(n) => `${n}人可交换`,
+    groupChatTag:"群",
+    noGroupChains:"当前范围内暂无可组成的多人交换环",
+    deleteChat:"删除",
+    chinaNotSupported:"暂不支持中国大陆地区，敬请期待",
   },
   en: {
-    title:"⚽ Heytea WC Swap", subtitle:"North America",
-    active:"active", matches:"matches",
+    title:"⚽ Heytea WC Swap", subtitle:"International",
+    active:"posts", matches:"matches",
     map:"Map", browse:"Browse", post:"Post", mine:"Mine", msgs:"Chat",
     all:"All", swappable:"Swappable",
     available:"Available",
     optional:"optional",
     postTitle:"Post your magnet",
     postingAs:"Nickname", editNickname:"Edit",
-    country:"Country",
-    city:"City", cityPh:"Type or search city",
     location:"Address", locPh:"Search address...",
     swapAreas:"Preferred swap areas", swapAreasPh:"Type an area, press Enter to add",
     swapAreasHint:"e.g. Downtown, North York, Markham",
@@ -155,9 +134,6 @@ const T = {
     chatPh:"Type a message...", send:"Send",
     noChats:"No messages yet", noChatsDesc:"Messages will appear here when you chat with other swappers",
     me:"Me",
-    selectCity:"Select city",
-    allCities:"All cities",
-    areas:"Areas",
     edit:"Edit", save:"Save changes", cancel:"Cancel",
     myListings:"My listings", addAnother:"➕ Post another one",
     editTitle:"Edit your listing",
@@ -170,6 +146,13 @@ const T = {
     setLocation:"Set your location", changeLocation:"Change location",
     locationErrorGps:"Couldn't get your location — search instead; if denied, re-enable location in browser settings",
     signInDesc:"Sign in to post, browse, and receive messages", signInGoogle:"Continue with Google", signOut:"Sign out",
+    groupSwap:"Group swap", createGroupChat:"Create group chat", openGroupChat:"Open group chat",
+    groupTitle:(n) => `${n}-person swap`,
+    ringLabel:(n) => `${n}-way match available`,
+    groupChatTag:"Group",
+    noGroupChains:"No group swap rings in your current range yet",
+    deleteChat:"Delete",
+    chinaNotSupported:"Mainland China isn't supported yet — stay tuned!",
   }
 };
 
@@ -192,23 +175,29 @@ const readableBadgeColor = (hex) => {
 // Normalize have field: always return an array
 const toArr = (v) => Array.isArray(v) ? v : (v ? [v] : []);
 const EXPIRY_OPTIONS = [3, 7, 15];
-const countryFromCityId = (cityId) => CITIES.find(c => c.id === cityId)?.country === "🇺🇸" ? "us" : "ca";
-const countryLabel = (code) => code === "us" ? "USA" : "Canada";
+const RING_COLORS = ["#3b82f6", "#a855f7", "#f59e0b", "#ec4899", "#14b8a6", "#ef4444", "#6366f1"];
+// General country code -> localized name, via the browser's built-in locale data (no maintenance).
+const countryLabel = (code, lang) => {
+  if (!code) return "";
+  try {
+    return new Intl.DisplayNames([lang === "cn" ? "zh" : "en"], { type: "region" }).of(code.toUpperCase());
+  } catch { return code; }
+};
 const inferPlaceLocation = (place) => {
   const parts = place?.address_components || [];
   const byType = (...types) => parts.find(p => types.some(type => p.types?.includes(type)));
-  const countryShort = byType("country")?.short_name?.toLowerCase();
-  const country = countryShort === "us" ? "us" : countryShort === "ca" ? "ca" : "";
+  const country = byType("country")?.short_name?.toUpperCase() || "";
   const cityName = byType("locality", "postal_town", "sublocality", "sublocality_level_1", "administrative_area_level_3")?.long_name || "";
   return { country, city: cityName };
 };
-const publicLocationLabel = (listing) => {
-  const cityName = CITIES.find(c => c.id === listing.city)?.name || listing.city || "";
+const publicLocationLabel = (listing, lang) => {
+  const cityName = listing.city || "";
+  const countryName = countryLabel(listing.country, lang);
   const parts = (listing.address || "")
     .split(",")
     .map(p => p.trim())
     .filter(Boolean)
-    .filter(p => !/^(canada|usa|united states)$/i.test(p))
+    .filter(p => !countryName || p.toLowerCase() !== countryName.toLowerCase())
     .filter(p => !/^[A-Z]{2}\s*([A-Z]\d[A-Z]\s*\d[A-Z]\d|\d{5})?$/i.test(p));
 
   const isStreet = (part) => /^\d+\b/.test(part) || /\b(st|street|ave|avenue|rd|road|blvd|boulevard|dr|drive|ln|lane|way|court|ct|plaza|pkwy|parkway)\b/i.test(part);
@@ -217,14 +206,7 @@ const publicLocationLabel = (listing) => {
     .slice(0, 2);
 
   if (areaParts.length) return areaParts.join(", ");
-  return cityName || countryLabel(listing.country);
-};
-const nearestCityByCoords = (lat, lng) => {
-  if (lat == null || lng == null) return null;
-  return CITIES.reduce((best, city) => {
-    const d = distanceKm(lat, lng, city.lat, city.lng);
-    return !best || d < best.distance ? { city, distance: d } : best;
-  }, null)?.city || null;
+  return cityName || countryName;
 };
 
 function useViewportWidth() {
@@ -266,6 +248,61 @@ function distanceKm(lat1, lng1, lat2, lng2) {
   const dLng = (lng2 - lng1) * Math.PI / 180;
   const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// ── Group swap chain matching (3-person rings, shown on the Browse tab) ──
+
+// The specific magnet `a` would hand to `b` (first of a.have that's in b.want), or null.
+function pickSwapItem(a, b) {
+  const item = toArr(a.have).find(h => (b.want || []).includes(h));
+  return item || null;
+}
+
+// Bounded DFS for cycles of length minLen..maxLen that start and end at `seed`. Callers are
+// expected to pass in an `allListings` set that's already narrowed to the viewer's chosen
+// distance range (e.g. distanceFilteredListings) — this function does no distance checks itself.
+function findSwapChains(seed, allListings, { minLen = 3, maxLen = 3 } = {}) {
+  const results = [];
+  const owners = new Set([seed.owner_token]);
+
+  function extend(path, edgeItems) {
+    const tail = path[path.length - 1];
+    if (path.length >= minLen) {
+      const closingItem = pickSwapItem(tail, seed);
+      if (closingItem) results.push({ members: [...path], items: [...edgeItems, closingItem] });
+    }
+    if (path.length === maxLen) return;
+    for (const next of allListings) {
+      if (owners.has(next.owner_token)) continue;
+      const item = pickSwapItem(tail, next);
+      if (!item) continue;
+      owners.add(next.owner_token);
+      path.push(next);
+      edgeItems.push(item);
+      extend(path, edgeItems);
+      edgeItems.pop();
+      path.pop();
+      owners.delete(next.owner_token);
+    }
+  }
+
+  extend([seed], []);
+  return results;
+}
+
+// Rotate a ring's listing ids so the lexicographically smallest id comes first (direction kept,
+// since reversing would imply a different set of trade items). Used to de-dupe the same ring
+// discovered from different starting members.
+function canonicalMatchKey(listingIds) {
+  let minIdx = 0;
+  for (let i = 1; i < listingIds.length; i++) if (listingIds[i] < listingIds[minIdx]) minIdx = i;
+  return [...listingIds.slice(minIdx), ...listingIds.slice(0, minIdx)].join(",");
+}
+
+// Sum of the other members' distance from the viewer (each already carries __distanceKm from
+// distanceFilteredListings/mapListings) — used to sort rings by "closest to me overall" first.
+function chainTotalDistance(chain, ownerToken) {
+  return chain.members.reduce((sum, m) => m.owner_token === ownerToken ? sum : sum + (m.__distanceKm ?? Infinity), 0);
 }
 
 // Build a flag-circle icon as an SVG data URL, for use as a Google Maps marker icon.
@@ -350,6 +387,23 @@ function loadGoogleMaps() {
     document.head.appendChild(s);
   });
   return __gmapsLoadPromise;
+}
+
+// Turns raw coordinates into a human-friendly "city, region" label via Google's Geocoder —
+// works anywhere in the world, unlike matching against a fixed city list.
+async function reverseGeocodeLabel(lat, lng) {
+  try {
+    const gmaps = await loadGoogleMaps();
+    const geocoder = new gmaps.Geocoder();
+    const { results } = await geocoder.geocode({ location: { lat, lng } });
+    const parts = results?.[0]?.address_components || [];
+    const byType = (...types) => parts.find(p => types.some(type => p.types?.includes(type)));
+    return byType("locality", "postal_town", "sublocality", "administrative_area_level_2")?.long_name
+      || byType("administrative_area_level_1")?.long_name
+      || "";
+  } catch {
+    return "";
+  }
 }
 
 // ════════════════════════════════════════════════════════════
@@ -440,49 +494,7 @@ function TagInput({ tags, onChange, placeholder, hint }) {
 }
 
 // ── Google Map View (interactive, zoomable) ──
-function CityInput({ value, country, onChange, onCitySelect, placeholder, style: inputStyle, t }) {
-  const inputRef = useRef(null);
-  const acRef = useRef(null);
-  const [error, setError] = useState(false);
-
-  useEffect(() => {
-    if (!GMAP_KEY) return;
-    if (acRef.current) {
-      acRef.current.setComponentRestrictions({ country: country || ["ca", "us"] });
-      return;
-    }
-    loadGoogleMaps().then(gmaps => {
-      if (!inputRef.current) return;
-      const ac = new gmaps.places.Autocomplete(inputRef.current, {
-        types: ["(cities)"],
-        componentRestrictions: { country: country || ["ca", "us"] },
-        fields: ["formatted_address", "geometry", "name"],
-      });
-      ac.addListener("place_changed", () => {
-        const place = ac.getPlace();
-        const cityName = place.name || place.formatted_address || value;
-        onChange(cityName);
-        if (place?.geometry?.location) {
-          onCitySelect?.({
-            city: cityName,
-            lat: place.geometry.location.lat(),
-            lng: place.geometry.location.lng(),
-          });
-        }
-      });
-      acRef.current = ac;
-    }).catch(() => setError(true));
-  }, [country]);
-
-  return (
-    <div>
-      <input ref={inputRef} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} style={inputStyle} />
-      {error && <div style={{ fontSize: 11, color: "#ef4444", marginTop: 4 }}>âš ï¸ {t?.mapsError}</div>}
-    </div>
-  );
-}
-
-function GoogleMapView({ listings, onSelect, myListings = [], selectedCity, centerCoords, t, isWide = false }) {
+function GoogleMapView({ listings, onSelect, myListings = [], centerCoords, t, isWide = false }) {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersRef = useRef([]);
@@ -498,11 +510,10 @@ function GoogleMapView({ listings, onSelect, myListings = [], selectedCity, cent
   useEffect(() => {
     if (!gmaps || !mapRef.current || mapInstanceRef.current) return;
     try {
-      const initCity = CITIES.find(c => c.id === selectedCity) || CITIES[0];
-      const initCenter = centerCoords || { lat: initCity.lat, lng: initCity.lng };
+      const initCenter = centerCoords || WORLD_VIEW;
       mapInstanceRef.current = new gmaps.Map(mapRef.current, {
         center: initCenter,
-        zoom: centerCoords ? 12 : initCity.zoom,
+        zoom: centerCoords ? 12 : WORLD_VIEW.zoom,
         zoomControl: true,
         mapTypeControl: false,
         streetViewControl: false,
@@ -517,16 +528,6 @@ function GoogleMapView({ listings, onSelect, myListings = [], selectedCity, cent
       setMapError(true);
     }
   }, [gmaps]);
-
-  // Pan to selected city
-  useEffect(() => {
-    if (!mapInstanceRef.current || !selectedCity || centerCoords) return;
-    const city = CITIES.find(c => c.id === selectedCity);
-    if (city) {
-      mapInstanceRef.current.panTo({ lat: city.lat, lng: city.lng });
-      mapInstanceRef.current.setZoom(city.zoom);
-    }
-  }, [selectedCity, centerCoords]);
 
   // Center on the user's nearby reference point when available.
   useEffect(() => {
@@ -714,21 +715,16 @@ function FallbackMapView({ listings, onSelect, myListings = [], isWide = false }
 }
 
 // ── Address Autocomplete ──
-function AddressInput({ value, country, onChange, onPlaceSelect, placeholder, style: inputStyle, t }) {
+function AddressInput({ value, onChange, onPlaceSelect, placeholder, style: inputStyle, t }) {
   const inputRef = useRef(null);
   const acRef = useRef(null);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    if (!GMAP_KEY) return;
-    if (acRef.current) {
-      acRef.current.setComponentRestrictions({ country: country || ["ca", "us"] });
-      return;
-    }
+    if (!GMAP_KEY || acRef.current) return;
     loadGoogleMaps().then(gmaps => {
       if (!inputRef.current) return;
       const ac = new gmaps.places.Autocomplete(inputRef.current, {
-        componentRestrictions: { country: country || ["ca", "us"] },
         fields: ["address_components", "formatted_address", "geometry"],
       });
       ac.addListener("place_changed", () => {
@@ -746,7 +742,7 @@ function AddressInput({ value, country, onChange, onPlaceSelect, placeholder, st
       });
       acRef.current = ac;
     }).catch(() => setError(true));
-  }, [country]);
+  }, []);
 
   return (
     <div>
@@ -786,7 +782,7 @@ function ListingCard({ listing: l, myListings = [], onMessage, expanded, onToggl
             {isUnavailable && <span style={{ fontSize: 10, color: "#b5651d", fontWeight: 600, background: "#fff3e0", padding: "2px 8px", borderRadius: 10 }}>Post expired</span>}
           </div>
           <div style={{ fontSize: 11, color: "#888", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {publicLocationLabel(l)} / {timeAgo(l.created_at, t)}
+            {publicLocationLabel(l, lang)} / {timeAgo(l.created_at, t)}
             {typeof l.__distanceKm === "number" && <span> / {l.__distanceKm.toFixed(1)} km away</span>}
           </div>
         </div>
@@ -833,15 +829,54 @@ function ListingCard({ listing: l, myListings = [], onMessage, expanded, onToggl
   );
 }
 
+// ── Chat list row with a persistent, light delete button on the right ──
+function DeletableRow({ children, onDelete, deleteLabel }) {
+  return (
+    <div style={{ display: "flex", alignItems: "stretch", gap: 6 }}>
+      <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
+      <button
+        onClick={e => { e.stopPropagation(); onDelete(); }}
+        title={deleteLabel}
+        aria-label={deleteLabel}
+        style={{
+          flexShrink: 0, width: 36, borderRadius: 12, border: "1px solid #eee",
+          background: "#f9f9f5", color: "#bbb", cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 600,
+        }}
+      >×</button>
+    </div>
+  );
+}
+
 // ── Chat View (conversation list) ──
 const latestListingForOwner = (listings, ownerToken) => {
   const mine = listings.filter(l => l.owner_token === ownerToken);
   return mine.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))[0] || null;
 };
 
-function ChatView({ ownerToken, allListings, t, onOpenChat, onViewListing }) {
+function ChatView({ ownerToken, allListings, t, onOpenChat, onViewListing, groupConversations = [], onOpenGroupChat }) {
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [hiddenMap, setHiddenMap] = useState({}); // conversation_id -> hidden_at
+
+  const loadHidden = useCallback(async () => {
+    if (!ownerToken) return;
+    const { data } = await supabase.from("hidden_conversations").select("conversation_id, hidden_at").eq("user_token", ownerToken);
+    const map = {};
+    (data || []).forEach(h => { map[h.conversation_id] = h.hidden_at; });
+    setHiddenMap(map);
+  }, [ownerToken]);
+
+  useEffect(() => { loadHidden(); }, [loadHidden]);
+
+  const handleDelete = useCallback(async (convId) => {
+    const hiddenAt = new Date().toISOString();
+    setHiddenMap(prev => ({ ...prev, [convId]: hiddenAt }));
+    await supabase.from("hidden_conversations").upsert(
+      { user_token: ownerToken, conversation_id: convId, hidden_at: hiddenAt },
+      { onConflict: "user_token,conversation_id" }
+    );
+  }, [ownerToken]);
 
   const loadConversations = useCallback(async () => {
     try {
@@ -881,7 +916,21 @@ function ChatView({ ownerToken, allListings, t, onOpenChat, onViewListing }) {
 
   if (loading) return <div style={{ textAlign: "center", padding: 40, color: "#aaa" }}>{t.loading}</div>;
 
-  if (conversations.length === 0) return (
+  // Hidden (swiped-deleted) conversations stay hidden until a newer message arrives — same as WeChat.
+  const isHidden = (id, lastMessageAt) => {
+    const hiddenAt = hiddenMap[id];
+    if (!hiddenAt) return false;
+    return !lastMessageAt || new Date(lastMessageAt) <= new Date(hiddenAt);
+  };
+
+  const items = [
+    ...conversations.map(c => ({ type: "direct", key: `d-${c.id}`, sortAt: c.lastMessage.created_at, data: c })),
+    ...groupConversations.map(c => ({ type: "group", key: `g-${c.id}`, sortAt: c.lastMessage?.created_at || c.joinedAt, data: c })),
+  ]
+    .filter(item => !isHidden(item.data.id, item.data.lastMessage?.created_at))
+    .sort((a, b) => new Date(b.sortAt) - new Date(a.sortAt));
+
+  if (items.length === 0) return (
     <div style={{ textAlign: "center", padding: 50, color: "#aaa" }}>
       <div style={{ fontSize: 36, marginBottom: 10 }}>💬</div>
       <div style={{ fontSize: 14, fontWeight: 500, color: "#888" }}>{t.noChats}</div>
@@ -891,63 +940,116 @@ function ChatView({ ownerToken, allListings, t, onOpenChat, onViewListing }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      {conversations.map(conv => {
-        const other = latestListingForOwner(allListings, conv.otherToken);
-        const hasActivePost = !!other && other.active !== false && !isExpiredListing(other);
-        const postStatus = hasActivePost ? "Active post" : other ? "Post expired" : "No post";
-        const name = other?.nickname || "User";
-        const haveArr = other ? toArr(other.have) : [];
-        const c = haveArr.length ? mColor(haveArr[0]) : "#888";
-        return (
-          <div key={conv.id} onClick={() => onOpenChat(conv.otherToken, name)}
-            style={{
-              padding: "12px 14px", background: conv.unread > 0 ? "rgba(59,130,246,.04)" : "#fff",
-              border: `1.5px solid ${conv.unread > 0 ? "#3b82f6" : "#e5e5e0"}`,
-              borderRadius: 14, cursor: "pointer",
-            }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{
-                width: 38, height: 38, borderRadius: "50%", background: c + "15",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 17, fontWeight: 600, color: readableBadgeColor(c), flexShrink: 0,
-              }}>{name[0]}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <button
-                    onClick={e => { e.stopPropagation(); if (other) onViewListing(other); }}
-                    disabled={!other}
-                    style={{
-                      display: "inline-flex", alignItems: "center", gap: 6, minWidth: 0,
-                      background: "none", border: "none", padding: 0,
-                      color: other ? "#333" : "#999", cursor: other ? "pointer" : "default",
-                      fontWeight: 600, fontSize: 14,
-                    }}
-                  >
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
-                    <span style={{
-                      flexShrink: 0, fontSize: 9, fontWeight: 600, borderRadius: 8, padding: "2px 6px",
-                      color: hasActivePost ? "#10b981" : "#b5651d",
-                      background: hasActivePost ? "rgba(16,185,129,.1)" : "#fff3e0",
-                    }}>{postStatus}</span>
-                  </button>
-                  <span style={{ fontSize: 10, color: "#aaa" }}>{timeAgo(conv.lastMessage.created_at, t)}</span>
-                </div>
-                <div style={{ fontSize: 12, color: "#888", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {conv.lastMessage.sender_token === ownerToken ? `${t.me}: ` : ""}{conv.lastMessage.text}
-                </div>
-              </div>
-              {conv.unread > 0 && (
-                <div style={{
-                  minWidth: 20, height: 20, borderRadius: 10, background: "#3b82f6",
-                  color: "#fff", fontSize: 11, fontWeight: 600,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  padding: "0 5px", flexShrink: 0,
-                }}>{conv.unread}</div>
-              )}
-            </div>
+      {items.map(item => (
+        <DeletableRow key={item.key} onDelete={() => handleDelete(item.data.id)} deleteLabel={t.deleteChat}>
+          {item.type === "group" ? (
+            <GroupConversationRow conv={item.data} t={t} onOpenGroupChat={onOpenGroupChat} />
+          ) : (
+            <DirectConversationRow conv={item.data} ownerToken={ownerToken} allListings={allListings} t={t} onOpenChat={onOpenChat} onViewListing={onViewListing} />
+          )}
+        </DeletableRow>
+      ))}
+    </div>
+  );
+}
+
+function DirectConversationRow({ conv, ownerToken, allListings, t, onOpenChat, onViewListing }) {
+  const other = latestListingForOwner(allListings, conv.otherToken);
+  const hasActivePost = !!other && other.active !== false && !isExpiredListing(other);
+  const postStatus = hasActivePost ? "Active post" : other ? "Post expired" : "No post";
+  const name = other?.nickname || "User";
+  const haveArr = other ? toArr(other.have) : [];
+  const c = haveArr.length ? mColor(haveArr[0]) : "#888";
+  return (
+    <div onClick={() => onOpenChat(conv.otherToken, name)}
+      style={{
+        padding: "12px 14px", background: conv.unread > 0 ? "rgba(59,130,246,.04)" : "#fff",
+        border: `1.5px solid ${conv.unread > 0 ? "#3b82f6" : "#e5e5e0"}`,
+        borderRadius: 14, cursor: "pointer",
+      }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{
+          width: 38, height: 38, borderRadius: "50%", background: c + "15",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 17, fontWeight: 600, color: readableBadgeColor(c), flexShrink: 0,
+        }}>{name[0]}</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <button
+              onClick={e => { e.stopPropagation(); if (other) onViewListing(other); }}
+              disabled={!other}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 6, minWidth: 0,
+                background: "none", border: "none", padding: 0,
+                color: other ? "#333" : "#999", cursor: other ? "pointer" : "default",
+                fontWeight: 600, fontSize: 14,
+              }}
+            >
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
+              <span style={{
+                flexShrink: 0, fontSize: 9, fontWeight: 600, borderRadius: 8, padding: "2px 6px",
+                color: hasActivePost ? "#10b981" : "#b5651d",
+                background: hasActivePost ? "rgba(16,185,129,.1)" : "#fff3e0",
+              }}>{postStatus}</span>
+            </button>
+            <span style={{ fontSize: 10, color: "#aaa" }}>{timeAgo(conv.lastMessage.created_at, t)}</span>
           </div>
-        );
-      })}
+          <div style={{ fontSize: 12, color: "#888", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {conv.lastMessage.sender_token === ownerToken ? `${t.me}: ` : ""}{conv.lastMessage.text}
+          </div>
+        </div>
+        {conv.unread > 0 && (
+          <div style={{
+            minWidth: 20, height: 20, borderRadius: 10, background: "#3b82f6",
+            color: "#fff", fontSize: 11, fontWeight: 600,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: "0 5px", flexShrink: 0,
+          }}>{conv.unread}</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function GroupConversationRow({ conv, t, onOpenGroupChat }) {
+  const names = conv.members.map(m => m.nickname).join(", ");
+  return (
+    <div onClick={() => onOpenGroupChat(conv.id)}
+      style={{
+        padding: "12px 14px", background: conv.unread > 0 ? "rgba(16,185,129,.05)" : "#fff",
+        border: `1.5px solid ${conv.unread > 0 ? "#10b981" : "#e5e5e0"}`,
+        borderRadius: 14, cursor: "pointer",
+      }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{
+          width: 38, height: 38, borderRadius: "50%", background: "#10b98115",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 15, fontWeight: 700, color: "#10b981", flexShrink: 0,
+        }}>{conv.members.length}</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, minWidth: 0, fontWeight: 600, fontSize: 14, color: "#333" }}>
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{names}</span>
+              <span style={{
+                flexShrink: 0, fontSize: 9, fontWeight: 600, borderRadius: 8, padding: "2px 6px",
+                color: "#10b981", background: "rgba(16,185,129,.1)",
+              }}>{t.groupChatTag}</span>
+            </span>
+            {conv.lastMessage && <span style={{ fontSize: 10, color: "#aaa" }}>{timeAgo(conv.lastMessage.created_at, t)}</span>}
+          </div>
+          <div style={{ fontSize: 12, color: "#888", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {conv.lastMessage ? conv.lastMessage.text : t.groupTitle(conv.members.length)}
+          </div>
+        </div>
+        {conv.unread > 0 && (
+          <div style={{
+            minWidth: 20, height: 20, borderRadius: 10, background: "#10b981",
+            color: "#fff", fontSize: 11, fontWeight: 600,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: "0 5px", flexShrink: 0,
+          }}>{conv.unread}</div>
+        )}
+      </div>
     </div>
   );
 }
@@ -1078,6 +1180,164 @@ function ChatThread({ ownerToken, otherToken, otherName, otherListing, onBack, o
   );
 }
 
+// ── Summary card for one candidate 3-person swap ring (Browse/Map tab, "多人交换") ──
+function GroupRingCard({ chain, ownerToken, lang, t, creating, exists, onAction }) {
+  const n = chain.members.length;
+  return (
+    <div style={{
+      borderRadius: 14, background: "#fff", border: "1.5px solid #eee",
+      borderLeft: `5px solid ${chain.color}`, padding: "12px 14px",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, gap: 8 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: chain.color }}>{t.ringLabel(n)}</div>
+        <button onClick={onAction} disabled={creating} style={{
+          padding: "7px 14px", border: "none", borderRadius: 10,
+          background: chain.color, color: "#fff", fontWeight: 600, fontSize: 12,
+          cursor: creating ? "default" : "pointer", opacity: creating ? .6 : 1, flexShrink: 0,
+        }}>{exists ? t.openGroupChat : t.createGroupChat}</button>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {chain.members.map((member, i) => {
+          // This member gives chain.items[i] away, and receives chain.items[i-1] from whoever precedes them in the ring.
+          const haveItem = chain.items[i];
+          const wantItem = chain.items[(i - 1 + n) % n];
+          const isMe = member.owner_token === ownerToken;
+          return (
+            <div key={i} style={{
+              padding: "7px 10px",
+              borderRadius: 10, background: isMe ? chain.color + "12" : "#f9f9f5",
+              border: `1px solid ${isMe ? chain.color + "50" : "#eee"}`, fontSize: 13,
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <span style={{ fontWeight: 600, color: "#333" }}>{member.nickname}</span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "#333", fontWeight: 500 }}>
+                  <FlagCircle id={haveItem} size={18} /> {mName(haveItem, lang)}
+                </span>
+                <span style={{ color: "#aaa" }}>→</span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "#333", fontWeight: 500 }}>
+                  <FlagCircle id={wantItem} size={18} /> {mName(wantItem, lang)}
+                </span>
+              </div>
+              <div style={{ fontSize: 11, color: "#888", marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {publicLocationLabel(member, lang)} / {timeAgo(member.created_at, t)}
+                {typeof member.__distanceKm === "number" && <span> / {member.__distanceKm.toFixed(1)} km away</span>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Group Chat Thread (3-person swap ring) ──
+function GroupChatThread({ ownerToken, conversationId, members, onBack, t }) {
+  const [messages, setMessages] = useState([]);
+  const [text, setText] = useState("");
+  const [sending, setSending] = useState(false);
+  const scrollRef = useRef(null);
+  const nameFor = (token) => members.find(m => m.user_token === token)?.nickname || "?";
+
+  useEffect(() => {
+    async function load() {
+      const { data } = await supabase
+        .from("group_messages").select("*")
+        .eq("conversation_id", conversationId)
+        .order("created_at", { ascending: true });
+      if (data) setMessages(data);
+      await supabase.from("group_conversation_participants")
+        .update({ last_read_at: new Date().toISOString() })
+        .eq("conversation_id", conversationId)
+        .eq("user_token", ownerToken);
+    }
+    load();
+
+    const ch = supabase.channel(`group-chat-${conversationId}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "group_messages", filter: `conversation_id=eq.${conversationId}` }, (payload) => {
+        setMessages(prev => prev.find(m => m.id === payload.new.id) ? prev : [...prev, payload.new]);
+        if (payload.new.sender_token !== ownerToken) {
+          supabase.from("group_conversation_participants")
+            .update({ last_read_at: new Date().toISOString() })
+            .eq("conversation_id", conversationId)
+            .eq("user_token", ownerToken)
+            .then(() => {});
+        }
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [conversationId, ownerToken]);
+
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [messages]);
+
+  const handleSend = async () => {
+    if (!text.trim() || sending) return;
+    setSending(true);
+    const msgText = text.trim();
+    setText("");
+    try {
+      const { data } = await supabase.from("group_messages").insert({
+        conversation_id: conversationId,
+        sender_token: ownerToken,
+        text: msgText,
+      }).select().single();
+      if (data) setMessages(prev => prev.find(m => m.id === data.id) ? prev : [...prev, data]);
+    } catch (e) { console.error(e); }
+    setSending(false);
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0 12px", borderBottom: "1px solid #eee", flexShrink: 0 }}>
+        <button onClick={onBack} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", padding: "4px 8px", color: "#333" }}>←</button>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 600, fontSize: 15, color: "#333" }}>{t.groupTitle(members.length)}</div>
+          <div style={{ fontSize: 11, color: "#888", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {members.map(m => m.nickname).join(", ")}
+          </div>
+        </div>
+      </div>
+      <div ref={scrollRef} style={{ flex: 1, minHeight: 0, overflow: "auto", padding: "12px 0", display: "flex", flexDirection: "column", gap: 6 }}>
+        {messages.map(msg => {
+          const isMe = msg.sender_token === ownerToken;
+          return (
+            <div key={msg.id} style={{ display: "flex", flexDirection: "column", alignItems: isMe ? "flex-end" : "flex-start", padding: "0 4px" }}>
+              {!isMe && <div style={{ fontSize: 10, color: "#aaa", margin: "0 2px 2px" }}>{nameFor(msg.sender_token)}</div>}
+              <div style={{
+                maxWidth: "75%", padding: "9px 14px", borderRadius: 16,
+                background: isMe ? "#3b82f6" : "#f0f0ea",
+                color: isMe ? "#fff" : "#333",
+                fontSize: 14, lineHeight: 1.4,
+                borderBottomRightRadius: isMe ? 4 : 16,
+                borderBottomLeftRadius: isMe ? 16 : 4,
+              }}>
+                {msg.text}
+                <div style={{ fontSize: 9, marginTop: 3, opacity: 0.6, textAlign: isMe ? "right" : "left" }}>{timeAgo(msg.created_at, t)}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ display: "flex", gap: 8, padding: "10px 0", borderTop: "1px solid #eee", flexShrink: 0 }}>
+        <input
+          value={text}
+          onChange={e => setText(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && handleSend()}
+          placeholder={t.chatPh}
+          style={{ flex: 1, padding: "10px 14px", borderRadius: 20, fontSize: 14, border: "1.5px solid #ddd", background: "#fff", outline: "none", boxSizing: "border-box" }}
+        />
+        <button onClick={handleSend} disabled={!text.trim() || sending} style={{
+          padding: "10px 18px", borderRadius: 20, border: "none",
+          background: text.trim() ? "#3b82f6" : "#ccc",
+          color: "#fff", fontWeight: 600, fontSize: 14, cursor: "pointer",
+          opacity: text.trim() ? 1 : 0.5,
+        }}>{t.send}</button>
+      </div>
+    </div>
+  );
+}
+
 // ════════════════════════════════════════════════════════════
 //  APP
 // ════════════════════════════════════════════════════════════
@@ -1090,7 +1350,6 @@ export default function App() {
   const [expandedId, setExpandedId] = useState(null);
   const [filterMagnet, setFilterMagnet] = useState("");
   const [loading, setLoading] = useState(true);
-  const [selectedCity, setSelectedCity] = useState(() => localStorage.getItem("heytea-city") || "toronto");
   const [chatPreviewListing, setChatPreviewListing] = useState(null);
   const [pendingOfflineListing, setPendingOfflineListing] = useState(null);
   const [offlineDeleting, setOfflineDeleting] = useState(false);
@@ -1098,6 +1357,11 @@ export default function App() {
   // Chat state
   const [chatTarget, setChatTarget] = useState(null);
   const [unreadCount, setUnreadCount] = useState(0);
+
+  // Group swap chain state
+  const [groupChatTarget, setGroupChatTarget] = useState(null); // { conversationId, members }
+  const [groupConversations, setGroupConversations] = useState([]); // conversations I'm part of, for the chat list
+  const [groupUnreadCount, setGroupUnreadCount] = useState(0);
 
   // Editing state — which of my listings (if any) is currently being edited. "new" = creating a fresh one.
   const [editingId, setEditingId] = useState(null);
@@ -1117,7 +1381,7 @@ export default function App() {
   const autoLocationPromptRef = useRef(false);
 
   // Form state
-  const [fCountry, setFCountry] = useState("ca");
+  const [fCountry, setFCountry] = useState("");
   const [fCity, setFCity] = useState("");
   const [fAddr, setFAddr] = useState("");
   const [fLat, setFLat] = useState(null);
@@ -1178,8 +1442,7 @@ export default function App() {
   }, [nicknameInput, profile, ownerToken]);
 
   const resetForm = () => {
-    const defaultCountry = countryFromCityId(selectedCity);
-    setFCountry(defaultCountry); setFCity(""); setFAddr(""); setFLat(null); setFLng(null);
+    setFCountry(""); setFCity(""); setFAddr(""); setFLat(null); setFLng(null);
     setFHave([]); setFWant([]); setFAreas([]); setFExpireDays("3");
   };
 
@@ -1234,8 +1497,60 @@ export default function App() {
     return () => { supabase.removeChannel(ch); };
   }, [ownerToken]);
 
+  // ── Group swap chats: load conversations I'm in (for the chat list + unread badge) ──
+  const loadGroupConversations = useCallback(async () => {
+    if (!ownerToken) { setGroupConversations([]); return; }
+    try {
+      const { data: mine } = await supabase.from("group_conversation_participants").select("*").eq("user_token", ownerToken);
+      if (!mine || !mine.length) { setGroupConversations([]); return; }
+      const convIds = mine.map(p => p.conversation_id);
+      const [{ data: allParts }, { data: allMsgs }] = await Promise.all([
+        supabase.from("group_conversation_participants").select("*").in("conversation_id", convIds),
+        supabase.from("group_messages").select("*").in("conversation_id", convIds).order("created_at", { ascending: false }),
+      ]);
+      const convs = mine.map(p => {
+        const members = (allParts || []).filter(x => x.conversation_id === p.conversation_id);
+        const msgsForConv = (allMsgs || []).filter(m => m.conversation_id === p.conversation_id);
+        const lastMessage = msgsForConv[0] || null;
+        const unread = msgsForConv.filter(m => m.sender_token !== ownerToken && new Date(m.created_at) > new Date(p.last_read_at)).length;
+        return { id: p.conversation_id, members, lastMessage, unread, joinedAt: p.joined_at };
+      });
+      setGroupConversations(convs);
+    } catch (e) { console.error(e); }
+  }, [ownerToken]);
+
+  useEffect(() => {
+    loadGroupConversations();
+    if (!ownerToken) return;
+    const ch = supabase.channel("group-chat-list")
+      .on("postgres_changes", { event: "*", schema: "public", table: "group_messages" }, () => loadGroupConversations())
+      .on("postgres_changes", { event: "*", schema: "public", table: "group_conversation_participants" }, (payload) => {
+        if (payload.new?.user_token === ownerToken || payload.old?.user_token === ownerToken) loadGroupConversations();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [ownerToken, loadGroupConversations]);
+
+  useEffect(() => {
+    setGroupUnreadCount(groupConversations.reduce((sum, c) => sum + c.unread, 0));
+  }, [groupConversations]);
+
+  // Re-opening a conversation (direct or group) always un-hides it from the chat list again,
+  // even before any new message is sent — a swiped-delete shouldn't stick once you've gone back in.
+  const unhideConversation = useCallback((convId) => {
+    if (!ownerToken || !convId) return;
+    supabase.from("hidden_conversations").delete().eq("user_token", ownerToken).eq("conversation_id", convId).then(() => {});
+  }, [ownerToken]);
+
+  const openGroupChat = useCallback((conversationId) => {
+    const conv = groupConversations.find(c => c.id === conversationId);
+    if (!conv) return;
+    unhideConversation(conversationId);
+    setGroupChatTarget({ conversationId, members: conv.members });
+    setChatTarget(null);
+  }, [groupConversations, unhideConversation]);
+
   useEffect(() => { localStorage.setItem("heytea-lang", lang); }, [lang]);
-  useEffect(() => { localStorage.setItem("heytea-city", selectedCity); }, [selectedCity]);
   useEffect(() => { localStorage.setItem("heytea-my-location", JSON.stringify(myLocation)); }, [myLocation]);
 
   useEffect(() => {
@@ -1244,13 +1559,6 @@ export default function App() {
     setShowLocationModal(true);
     setLocationSearchInput("");
   }, [tab, myLocation]);
-
-  // Keep selectedCity (used for map default center/country defaults) in sync with the current location.
-  useEffect(() => {
-    if (!myLocation) return;
-    const nearest = nearestCityByCoords(myLocation.lat, myLocation.lng);
-    if (nearest) setSelectedCity(nearest.id);
-  }, [myLocation]);
 
   // ── Geolocation for distance filter ──
   const fetchGpsLocation = useCallback(() => {
@@ -1282,10 +1590,13 @@ export default function App() {
         stopWatching();
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
-        const nearest = nearestCityByCoords(lat, lng);
-        setMyLocation({ lat, lng, label: nearest?.name || "", source: "gps" });
+        setMyLocation({ lat, lng, label: "", source: "gps" });
         setLocating(false);
         setShowLocationModal(false);
+        reverseGeocodeLabel(lat, lng).then(label => {
+          if (!label) return;
+          setMyLocation(prev => (prev && prev.source === "gps" && prev.lat === lat && prev.lng === lng) ? { ...prev, label } : prev);
+        });
       },
       (err) => {
         if (settled) return;
@@ -1314,8 +1625,7 @@ export default function App() {
 
   const applySearchedLocation = useCallback(({ address, lat, lng, city }) => {
     if (lat == null || lng == null) return;
-    const nearest = nearestCityByCoords(lat, lng);
-    setMyLocation({ lat, lng, label: address || city || nearest?.name || "", source: "manual" });
+    setMyLocation({ lat, lng, label: address || city || "", source: "manual" });
     setLocationError(false);
     setShowLocationModal(false);
   }, []);
@@ -1340,12 +1650,66 @@ export default function App() {
     return res;
   }, [activeListings, chatPreviewListing, ownerToken, distanceKmFilter, locationReferenceCoords]);
 
+  const mapReferenceCoords = useMemo(() => {
+    return locationReferenceCoords;
+  }, [locationReferenceCoords]);
+
+  // Nearby listings for the Map tab, capped at MAP_NEARBY_RADIUS_KM — deliberately independent of
+  // filterMagnet/browseSort so ring search always sees the full local candidate pool, not whatever
+  // magnet chip happens to be selected.
+  const mapNearbyListings = useMemo(() => {
+    if (!mapReferenceCoords) return distanceFilteredListings;
+    return distanceFilteredListings
+      .map(l => {
+        if (l.owner_token === ownerToken) return l;
+        const d = distanceKm(mapReferenceCoords.lat, mapReferenceCoords.lng, l.lat, l.lng);
+        return d == null ? null : { ...l, __distanceKm: d };
+      })
+      .filter(l => l && (l.owner_token === ownerToken || l.__distanceKm <= MAP_NEARBY_RADIUS_KM));
+  }, [distanceFilteredListings, mapReferenceCoords, ownerToken]);
+
+  // ── Group swap chains (3-person rings), computed live within the Browse tab's chosen distance ──
+  const groupChains = useMemo(() => {
+    if (!ownerToken || !myListings.length) return [];
+    const seen = new Set();
+    const results = [];
+    for (const seed of myListings) {
+      for (const chain of findSwapChains(seed, distanceFilteredListings)) {
+        const key = canonicalMatchKey(chain.members.map(m => m.id));
+        if (seen.has(key)) continue;
+        seen.add(key);
+        results.push({ key, ...chain });
+      }
+    }
+    results.sort((a, b) => chainTotalDistance(a, ownerToken) - chainTotalDistance(b, ownerToken));
+    return results.map((c, i) => ({ ...c, color: RING_COLORS[i % RING_COLORS.length] }));
+  }, [myListings, distanceFilteredListings, ownerToken]);
+
+  // Same idea, but scoped to the Map tab's fixed nearby radius (mirrors matchCount/mapMatchCount).
+  const mapGroupChains = useMemo(() => {
+    if (!ownerToken || !myListings.length) return [];
+    const seen = new Set();
+    const results = [];
+    for (const seed of myListings) {
+      for (const chain of findSwapChains(seed, mapNearbyListings)) {
+        const key = canonicalMatchKey(chain.members.map(m => m.id));
+        if (seen.has(key)) continue;
+        seen.add(key);
+        results.push({ key, ...chain });
+      }
+    }
+    results.sort((a, b) => chainTotalDistance(a, ownerToken) - chainTotalDistance(b, ownerToken));
+    return results.map((c, i) => ({ ...c, color: RING_COLORS[i % RING_COLORS.length] }));
+  }, [myListings, mapNearbyListings, ownerToken]);
+
   const filtered = useMemo(() => {
     let res = distanceFilteredListings;
-    if (filterMagnet && filterMagnet !== "__match__") {
+    if (filterMagnet === "__group__") {
+      const memberIds = new Set(mapGroupChains.flatMap(c => c.members.map(m => m.id)));
+      res = res.filter(l => memberIds.has(l.id));
+    } else if (filterMagnet && filterMagnet !== "__match__") {
       res = res.filter(l => toArr(l.have).includes(filterMagnet));
-    }
-    if (filterMagnet === "__match__") {
+    } else if (filterMagnet === "__match__") {
       res = res.filter(l => l.owner_token !== ownerToken && isMatchAny(myListings, l));
     }
     if (browseSort === "nearest" && locationReferenceCoords) {
@@ -1354,11 +1718,7 @@ export default function App() {
       res = [...res].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
     }
     return res;
-  }, [distanceFilteredListings, filterMagnet, myListings, ownerToken, browseSort, locationReferenceCoords]);
-
-  const mapReferenceCoords = useMemo(() => {
-    return locationReferenceCoords;
-  }, [locationReferenceCoords]);
+  }, [distanceFilteredListings, filterMagnet, mapGroupChains, myListings, ownerToken, browseSort, locationReferenceCoords]);
 
   const mapListings = useMemo(() => {
     if (!mapReferenceCoords) return filtered;
@@ -1398,6 +1758,70 @@ export default function App() {
     return mapListings.filter(l => l.owner_token !== ownerToken && isMatchAny(myListings, l)).length;
   }, [mapListings, myListings, ownerToken]);
 
+  // Which rings already have a match_groups row (so the button can say "open" instead of "create")
+  const [existingGroupIds, setExistingGroupIds] = useState({});
+  useEffect(() => {
+    const keys = [...new Set([...groupChains.map(c => c.key), ...mapGroupChains.map(c => c.key)])];
+    if (!keys.length) { setExistingGroupIds({}); return; }
+    let cancelled = false;
+    supabase.from("match_groups").select("id, canonical_key").in("canonical_key", keys).then(({ data }) => {
+      if (cancelled) return;
+      const map = {};
+      (data || []).forEach(g => { map[g.canonical_key] = g.id; });
+      setExistingGroupIds(map);
+    });
+    return () => { cancelled = true; };
+  }, [groupChains, mapGroupChains]);
+
+  const [creatingGroupKey, setCreatingGroupKey] = useState(null);
+  const openOrCreateGroupChat = useCallback(async (chain) => {
+    if (!ownerToken || creatingGroupKey) return;
+    setCreatingGroupKey(chain.key);
+    try {
+      let groupId = existingGroupIds[chain.key];
+      if (!groupId) {
+        const { data: existing } = await supabase.from("match_groups").select("id").eq("canonical_key", chain.key).maybeSingle();
+        groupId = existing?.id;
+      }
+      if (!groupId) {
+        const { data: created } = await supabase.from("match_groups").insert({
+          member_listing_ids: chain.members.map(m => m.id),
+          member_tokens: chain.members.map(m => m.owner_token),
+          trade_items: chain.items,
+          canonical_key: chain.key,
+        }).select().single();
+        if (created) {
+          groupId = created.id;
+          const participants = chain.members.map(m => ({
+            conversation_id: groupId, user_token: m.owner_token, listing_id: m.id, nickname: m.nickname,
+          }));
+          await supabase.from("group_conversation_participants").upsert(participants, { onConflict: "conversation_id,user_token" });
+        } else {
+          // Race: another member's click already created it between our check and this insert.
+          const { data: retry } = await supabase.from("match_groups").select("id").eq("canonical_key", chain.key).maybeSingle();
+          groupId = retry?.id;
+        }
+      }
+      if (!groupId) throw new Error("Could not create group chat");
+      const me = chain.members.find(m => m.owner_token === ownerToken);
+      if (me) {
+        await supabase.from("group_conversation_participants").upsert({
+          conversation_id: groupId, user_token: ownerToken, listing_id: me.id, nickname: me.nickname,
+        }, { onConflict: "conversation_id,user_token" });
+      }
+      const { data: members } = await supabase.from("group_conversation_participants").select("*").eq("conversation_id", groupId);
+      setExistingGroupIds(prev => ({ ...prev, [chain.key]: groupId }));
+      unhideConversation(groupId);
+      setGroupChatTarget({ conversationId: groupId, members: members || [] });
+      setChatTarget(null);
+      setTab("msgs");
+    } catch (e) {
+      console.error(e);
+      alert(lang === "cn" ? "创建群聊失败，请重试" : "Failed to create group chat, please try again");
+    }
+    setCreatingGroupKey(null);
+  }, [ownerToken, existingGroupIds, creatingGroupKey, lang, unhideConversation]);
+
   // ── Post a new listing, or save edits to an existing one ──
   const handlePost = useCallback(async () => {
     if (!profile || !fAddr || fHave.length === 0 || fWant.length === 0 || !fExpireDays || posting) return;
@@ -1405,19 +1829,11 @@ export default function App() {
     try {
       const expiresAt = expiresAtFromDays(fExpireDays);
       if (!expiresAt) throw new Error("Please choose an expiration date.");
-      const selectedFallback = CITIES.find(c => c.id === selectedCity);
-      const city = CITIES.find(c => (c.id === fCity || c.name === fCity) && (!fCountry || countryFromCityId(c.id) === fCountry))
-        || nearestCityByCoords(fLat, fLng)
-        || selectedFallback;
-      const lat = fLat ?? (city ? city.lat + (Math.random() - .5) * .04 : 43.65);
-      const lng = fLng ?? (city ? city.lng + (Math.random() - .5) * .06 : -79.38);
-      const country = fCountry || (city ? countryFromCityId(city.id) : "ca");
-      const cityValue = fCity || city?.name || "";
       const payload = {
         nickname: profile.nickname, address: fAddr,
-        country, city: cityValue, have: fHave, want: fWant, swap_areas: fAreas,
+        country: fCountry, city: fCity, have: fHave, want: fWant, swap_areas: fAreas,
         expires_at: expiresAt,
-        lat, lng,
+        lat: fLat, lng: fLng,
       };
       if (editingId && editingId !== "new") {
         const { data, error } = await supabase.from("listings").update(payload).eq("id", editingId).eq("owner_token", ownerToken).select().single();
@@ -1431,18 +1847,17 @@ export default function App() {
       setEditingId(null);
       resetForm();
       setTab("map");
-      if (city) setSelectedCity(city.id);
     } catch (e) {
       console.error(e);
       alert(`Failed to save: ${e?.message || "Please try again."}`);
     }
     setPosting(false);
-  }, [profile, fCountry, fCity, fAddr, fLat, fLng, fHave, fWant, fAreas, fExpireDays, posting, ownerToken, editingId, selectedCity]);
+  }, [profile, fCountry, fCity, fAddr, fLat, fLng, fHave, fWant, fAreas, fExpireDays, posting, ownerToken, editingId]);
 
   // ── Start editing one of my listings ──
   const startEdit = (listing) => {
-    setFCountry(listing.country || countryFromCityId(listing.city));
-    setFCity(CITIES.find(c => c.id === listing.city)?.name || listing.city || "");
+    setFCountry(listing.country || "");
+    setFCity(listing.city || "");
     setFAddr(listing.address || "");
     setFLat(listing.lat || null);
     setFLng(listing.lng || null);
@@ -1476,11 +1891,17 @@ export default function App() {
 
   const openChat = (listing) => {
     if (!myListings.length) return;
+    unhideConversation(getConversationId(ownerToken, listing.owner_token));
     setChatTarget({ token: listing.owner_token, name: listing.nickname });
+    setGroupChatTarget(null);
     setTab("msgs");
   };
 
-  const openChatDirect = (token, name) => setChatTarget({ token, name });
+  const openChatDirect = (token, name) => {
+    unhideConversation(getConversationId(ownerToken, token));
+    setChatTarget({ token, name });
+    setGroupChatTarget(null);
+  };
   const viewListingFromChat = (listing) => {
     setChatPreviewListing(listing);
     setExpandedId(listing.id);
@@ -1540,7 +1961,7 @@ export default function App() {
           <div style={{ fontSize: 19, fontWeight: 600, letterSpacing: -.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</div>
           <div style={{ fontSize: 11, color: "#888", marginTop: 1 }}>
             {t.subtitle} · {activeListings.length} {t.active}
-            {matchCount > 0 && <span style={{ color: "#10b981", fontWeight: 600 }}> · {matchCount} {t.matches}</span>}
+            {(matchCount + groupChains.length) > 0 && <span style={{ color: "#10b981", fontWeight: 600 }}> · {matchCount + groupChains.length} {t.matches}</span>}
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
@@ -1574,9 +1995,9 @@ export default function App() {
 
       {/* ── Content ── */}
       <div style={{
-        flex: 1, minHeight: 0, overflow: (tab === "msgs" && chatTarget) ? "hidden" : "auto",
+        flex: 1, minHeight: 0, overflow: (tab === "msgs" && (chatTarget || groupChatTarget)) ? "hidden" : "auto",
         display: "flex", flexDirection: "column",
-        padding: (tab === "msgs" && chatTarget) ? `0 ${appPaddingX}px calc(64px + env(safe-area-inset-bottom))` : `0 ${appPaddingX}px ${isWide ? "96px" : "88px"}`,
+        padding: (tab === "msgs" && (chatTarget || groupChatTarget)) ? `0 ${appPaddingX}px calc(64px + env(safe-area-inset-bottom))` : `0 ${appPaddingX}px ${isWide ? "96px" : "88px"}`,
       }}>
 
         {/* MAP TAB */}
@@ -1586,7 +2007,6 @@ export default function App() {
               listings={mapListings}
               onSelect={l => { setExpandedId(l.id); setTab("browse"); }}
               myListings={myListings}
-              selectedCity={selectedCity}
               centerCoords={mapReferenceCoords}
               t={t}
               isWide={isWide}
@@ -1600,6 +2020,11 @@ export default function App() {
                 background: filterMagnet === "__match__" ? "#10b981" : "#f5f5f0",
                 color: filterMagnet === "__match__" ? "#fff" : "#555",
               }}>{t.swappable} ({mapMatchCount})</span>}
+              {(mapGroupChains.length > 0 || filterMagnet === "__group__") && <span onClick={() => setFilterMagnet(filterMagnet === "__group__" ? "" : "__group__")} style={{
+                ...chipStyle(filterMagnet === "__group__"),
+                background: filterMagnet === "__group__" ? "#6366f1" : "#f5f5f0",
+                color: filterMagnet === "__group__" ? "#fff" : "#555",
+              }}>{t.groupSwap} ({mapGroupChains.length})</span>}
               {MAGNETS.map(m => {
                 const c = mColor(m.id);
                 const on = filterMagnet === m.id;
@@ -1623,12 +2048,32 @@ export default function App() {
               </div>
             )}
 
-            {myListings.length > 0 && mapMatchCount > 0 && (
+            {filterMagnet !== "__group__" && myListings.length > 0 && mapMatchCount > 0 && (
               <div style={{ marginTop: 14 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, color: "#10b981" }}>{t.swappable} ({mapMatchCount})</div>
                 <div style={contentGrid}>
                   {mapListings.filter(l => isMatchAny(myListings, l))
                     .map(l => <ListingCard key={l.id} listing={l} myListings={myListings} onMessage={openChat} expanded={expandedId === l.id} onToggle={() => setExpandedId(expandedId === l.id ? null : l.id)} lang={lang} t={t} />)}
+                </div>
+              </div>
+            )}
+
+            {filterMagnet !== "__match__" && mapGroupChains.length > 0 && (
+              <div style={{ marginTop: 14 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, color: "#6366f1" }}>{t.groupSwap} ({mapGroupChains.length})</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {mapGroupChains.map(chain => (
+                    <GroupRingCard
+                      key={chain.key}
+                      chain={chain}
+                      ownerToken={ownerToken}
+                      lang={lang}
+                      t={t}
+                      creating={creatingGroupKey === chain.key}
+                      exists={!!existingGroupIds[chain.key]}
+                      onAction={() => openOrCreateGroupChat(chain)}
+                    />
+                  ))}
                 </div>
               </div>
             )}
@@ -1645,9 +2090,14 @@ export default function App() {
                 background: filterMagnet === "__match__" ? "#10b981" : "#f5f5f0",
                 color: filterMagnet === "__match__" ? "#fff" : "#555",
               }}>{t.swappable} ({matchCount})</span>}
+              {(groupChains.length > 0 || filterMagnet === "__group__") && <span onClick={() => setFilterMagnet(filterMagnet === "__group__" ? "" : "__group__")} style={{
+                ...chipStyle(filterMagnet === "__group__"),
+                background: filterMagnet === "__group__" ? "#6366f1" : "#f5f5f0",
+                color: filterMagnet === "__group__" ? "#fff" : "#555",
+              }}>{t.groupSwap} ({groupChains.length})</span>}
             </div>
 
-            {availableMagnets.length > 0 && (
+            {filterMagnet !== "__group__" && availableMagnets.length > 0 && (
               <div style={{ marginBottom: 10 }}>
                 <div style={{ fontSize: 12, color: "#888", marginBottom: 6 }}>{t.available}</div>
                 <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
@@ -1696,10 +2146,33 @@ export default function App() {
               <div style={{ fontSize: 11, color: "#b5651d", marginBottom: 10 }}>{t.noLocationRef}</div>
             )}
 
-            <div style={contentGrid}>
-              {filtered.map(l => <ListingCard key={l.id} listing={l} myListings={myListings} onMessage={openChat} expanded={expandedId === l.id} onToggle={() => setExpandedId(expandedId === l.id ? null : l.id)} lang={lang} t={t} />)}
-              {filtered.length === 0 && <div style={{ textAlign: "center", padding: 40, color: "#aaa" }}><div style={{ fontSize: 28, marginBottom: 6 }}>🔍</div><div style={{ fontSize: 13 }}>{t.noResults}</div></div>}
-            </div>
+            {filterMagnet === "__group__" ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {groupChains.map(chain => (
+                  <GroupRingCard
+                    key={chain.key}
+                    chain={chain}
+                    ownerToken={ownerToken}
+                    lang={lang}
+                    t={t}
+                    creating={creatingGroupKey === chain.key}
+                    exists={!!existingGroupIds[chain.key]}
+                    onAction={() => openOrCreateGroupChat(chain)}
+                  />
+                ))}
+                {groupChains.length === 0 && (
+                  <div style={{ textAlign: "center", padding: 40, color: "#aaa" }}>
+                    <div style={{ fontSize: 28, marginBottom: 6 }}>🔗</div>
+                    <div style={{ fontSize: 13 }}>{t.noGroupChains}</div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div style={contentGrid}>
+                {filtered.map(l => <ListingCard key={l.id} listing={l} myListings={myListings} onMessage={openChat} expanded={expandedId === l.id} onToggle={() => setExpandedId(expandedId === l.id ? null : l.id)} lang={lang} t={t} />)}
+                {filtered.length === 0 && <div style={{ textAlign: "center", padding: 40, color: "#aaa" }}><div style={{ fontSize: 28, marginBottom: 6 }}>🔍</div><div style={{ fontSize: 13 }}>{t.noResults}</div></div>}
+              </div>
+            )}
           </div>
         )}
 
@@ -1720,6 +2193,7 @@ export default function App() {
                     setFLng(null);
                   }}
                   onPlaceSelect={({ address, lat, lng, country, city }) => {
+                    if (country === "CN") { alert(t.chinaNotSupported); return; }
                     setFAddr(address);
                     setFLat(lat);
                     setFLng(lng);
@@ -1849,9 +2323,21 @@ export default function App() {
               onViewListing={viewListingFromChat}
               t={t}
             />
+          ) : groupChatTarget ? (
+            <GroupChatThread
+              ownerToken={ownerToken}
+              conversationId={groupChatTarget.conversationId}
+              members={groupChatTarget.members}
+              onBack={() => setGroupChatTarget(null)}
+              t={t}
+            />
           ) : (
             <div style={{ paddingBottom: 88, overflow: "auto" }}>
-              <ChatView ownerToken={ownerToken} allListings={listings} t={t} lang={lang} onOpenChat={openChatDirect} onViewListing={viewListingFromChat} />
+              <ChatView
+                ownerToken={ownerToken} allListings={listings} t={t} lang={lang}
+                onOpenChat={openChatDirect} onViewListing={viewListingFromChat}
+                groupConversations={groupConversations} onOpenGroupChat={openGroupChat}
+              />
             </div>
           )
         )}
@@ -1906,7 +2392,6 @@ export default function App() {
 
             <AddressInput
               value={locationSearchInput}
-              country={null}
               onChange={setLocationSearchInput}
               onPlaceSelect={applySearchedLocation}
               placeholder={t.mapSearch}
@@ -1969,7 +2454,7 @@ export default function App() {
                 {pendingOfflineListing.nickname || "My post"}
               </div>
               <div style={{ marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {publicLocationLabel(pendingOfflineListing)}
+                {publicLocationLabel(pendingOfflineListing, lang)}
               </div>
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
@@ -2012,10 +2497,10 @@ export default function App() {
         {[
           { id: "map", icon: "📍", label: t.map },
           { id: "browse", icon: "🔍", label: t.browse },
-          { id: "msgs", icon: "💬", label: t.msgs, badge: unreadCount },
+          { id: "msgs", icon: "💬", label: t.msgs, badge: unreadCount + groupUnreadCount },
           { id: "post", icon: myListings.length > 0 ? "👤" : "➕", label: myListings.length > 0 ? t.mine : t.post },
         ].map(x => (
-          <button key={x.id} onClick={() => { setTab(x.id); setExpandedId(null); if (x.id !== "msgs") setChatTarget(null); if (x.id !== "browse") setChatPreviewListing(null); }} style={{
+          <button key={x.id} onClick={() => { setTab(x.id); setExpandedId(null); if (x.id !== "msgs") { setChatTarget(null); setGroupChatTarget(null); } if (x.id !== "browse") setChatPreviewListing(null); }} style={{
             position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 1,
             background: "none", border: "none", cursor: "pointer", padding: "3px 14px",
             color: tab === x.id ? "#10b981" : "#999", fontWeight: tab === x.id ? 600 : 400, fontSize: 10,
