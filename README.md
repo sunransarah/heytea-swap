@@ -74,12 +74,6 @@ Open `Supabase Dashboard -> SQL Editor -> New query` and run the contents of eac
 
 Grab the project's connection string from `Supabase Dashboard -> Connect`, and run the same files in order with `psql`, TablePlus, DBeaver, or similar.
 
-### Notes
-
-- Migrations are additive by design — they don't drop or rewrite existing data. If you need to reset a project's app data during development, run `delete from group_messages; delete from group_conversation_participants; delete from match_groups; delete from hidden_conversations; delete from messages; delete from listings;` first (leaves `profiles`/auth users intact).
-- If you're maintaining a separate dev Supabase project alongside production (recommended so you're not testing against real user data), keep its credentials in a local, gitignored file — this repo's convention is `local.env.dev` — and swap `.env.local`'s `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` to point at whichever project you're running against locally.
-- Deploy schema changes (`db push`) before deploying frontend code that depends on them — the app queries new tables/columns defensively, but there's no reason to have the frontend race the schema.
-
 ## Google Maps Setup
 
 Enable these APIs in Google Cloud:
@@ -117,9 +111,3 @@ npm run preview
 ```
 
 Serves the production build locally for preview.
-
-## Notes
-
-- Taking a listing offline deletes it from Supabase so it disappears from browse results.
-- If saving fails, check that all migrations in `supabase/migrations/` have been applied to the current Supabase project (see Database Setup above).
-- Group swap rings (3-person chains) and the group chat they create are computed live in the app — there's no background job. A ring is only visible to viewers who are actually part of it.
