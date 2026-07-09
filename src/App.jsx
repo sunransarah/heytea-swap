@@ -723,7 +723,7 @@ export default function App() {
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 19, fontWeight: 600, letterSpacing: -.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</div>
           <div style={{ fontSize: 11, color: "#888", marginTop: 1 }}>
-            {t.subtitle} · {activeListings.length} {t.active}
+            {t.subtitle && `${t.subtitle} · `}{activeListings.length} {t.active}
             {(matchCount + groupChains.length) > 0 && <span style={{ color: "#10b981", fontWeight: 600 }}> · {matchCount + groupChains.length} {t.matches}</span>}
           </div>
         </div>

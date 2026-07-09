@@ -4,7 +4,7 @@
 
 export const T = {
   cn: {
-    title:"⚽ 喜茶世界杯换贴", subtitle:"海外版",
+    title:"⚽ 喜茶世界杯换贴", subtitle:"",
     active:"条帖子", matches:"个匹配",
     map:"地图", browse:"浏览", post:"发布", mine:"我的", msgs:"消息",
     all:"全部", swappable:"可互换",
