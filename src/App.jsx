@@ -100,6 +100,39 @@ export default function App() {
     return () => { cancelled = true; };
   }, [ownerToken]);
 
+  // Username + password auth (alternative to Google sign-in, e.g. for users where Google is unavailable).
+  const [authMode, setAuthMode] = useState("signin"); // "signin" | "signup"
+  const [authUsername, setAuthUsername] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authError, setAuthError] = useState("");
+  const [authBusy, setAuthBusy] = useState(false);
+  const [showAuthPassword, setShowAuthPassword] = useState(false);
+
+  const submitUsernameAuth = useCallback(async () => {
+    const username = authUsername.trim().toLowerCase();
+    if (!/^[a-z0-9_]{3,20}$/.test(username)) { setAuthError(t.authUsernameInvalid); return; }
+    if (authPassword.length < 6) { setAuthError(t.authPasswordInvalid); return; }
+    setAuthError("");
+    setAuthBusy(true);
+    const email = `${username}@users.heytea-swap.app`;
+    const { data, error } = authMode === "signup"
+      ? await supabase.auth.signUp({ email, password: authPassword })
+      : await supabase.auth.signInWithPassword({ email, password: authPassword });
+    if (error) {
+      if (authMode === "signup") {
+        setAuthError(/already registered/i.test(error.message) ? t.authUsernameTaken : error.message);
+      } else {
+        setAuthError(t.authFailed);
+      }
+      setAuthBusy(false);
+      return;
+    }
+    if (authMode === "signup" && data.user) {
+      await supabase.from("profiles").upsert({ id: data.user.id, nickname: username }, { onConflict: "id" });
+    }
+    setAuthBusy(false);
+  }, [authUsername, authPassword, authMode, t]);
+
   const [editingNickname, setEditingNickname] = useState(false);
   const [nicknameInput, setNicknameInput] = useState("");
   const [savingNickname, setSavingNickname] = useState(false);
@@ -629,6 +662,55 @@ export default function App() {
         >
           🔑 {t.signInGoogle}
         </button>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "18px 0" }}>
+          <div style={{ flex: 1, height: 1, background: "#eee" }} />
+          <span style={{ fontSize: 12, color: "#aaa" }}>{t.authOr}</span>
+          <div style={{ flex: 1, height: 1, background: "#eee" }} />
+        </div>
+
+        <input
+          value={authUsername} onChange={e => setAuthUsername(e.target.value)}
+          placeholder={t.authUsernamePh} style={{ ...inp, marginBottom: 10 }}
+        />
+        <div style={{ position: "relative", marginBottom: 10 }}>
+          <input
+            value={authPassword} onChange={e => setAuthPassword(e.target.value)} type={showAuthPassword ? "text" : "password"}
+            placeholder={t.authPasswordPh} style={{ ...inp, paddingRight: 40 }}
+            onKeyDown={e => e.key === "Enter" && submitUsernameAuth()}
+          />
+          <button
+            type="button" onClick={() => setShowAuthPassword(v => !v)} aria-label={showAuthPassword ? t.authHidePassword : t.authShowPassword}
+            style={{
+              position: "absolute", right: 4, top: "50%", transform: "translateY(-50%)",
+              width: 32, height: 32, border: "none", background: "transparent", cursor: "pointer", fontSize: 15,
+            }}
+          >
+            {showAuthPassword ? "🙈" : "👁"}
+          </button>
+        </div>
+        {authMode === "signup" && !authError && (
+          <div style={{ fontSize: 11, color: "#aaa", marginBottom: 10, textAlign: "left" }}>
+            {t.authUsernameInvalid}；{t.authPasswordInvalid}
+          </div>
+        )}
+        {authError && <div style={{ fontSize: 12, color: "#ef4444", marginBottom: 10, textAlign: "left" }}>{authError}</div>}
+        <button
+          onClick={submitUsernameAuth} disabled={authBusy}
+          style={{
+            width: "100%", padding: "12px 0", borderRadius: 12, border: "none",
+            background: "#333", color: "#fff", fontWeight: 600, fontSize: 14,
+            cursor: authBusy ? "default" : "pointer", opacity: authBusy ? 0.6 : 1,
+          }}
+        >
+          {authBusy ? t.loading : (authMode === "signup" ? t.authSignUp : t.authSignIn)}
+        </button>
+        <div
+          onClick={() => { setAuthMode(m => m === "signup" ? "signin" : "signup"); setAuthError(""); }}
+          style={{ fontSize: 12, color: "#888", marginTop: 12, cursor: "pointer" }}
+        >
+          {authMode === "signup" ? t.authToggleToSignin : t.authToggleToSignup}
+        </div>
       </div>
     </div>
   );
@@ -874,7 +956,6 @@ export default function App() {
                     setFLng(null);
                   }}
                   onPlaceSelect={({ address, lat, lng, country, city }) => {
-                    if (country === "CN") { alert(t.chinaNotSupported); return; }
                     setFAddr(address);
                     setFLat(lat);
                     setFLng(lng);

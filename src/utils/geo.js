@@ -1,6 +1,5 @@
 // ════════════════════════════════════════════════════════════
 //  WORLD VIEW — default map center/zoom when no location is known yet.
-//  Mainland China isn't supported yet (see chinaNotSupported) — a future phase may add it via Amap.
 // ════════════════════════════════════════════════════════════
 
 export const WORLD_VIEW = { lat: 20, lng: 10, zoom: 2 };
