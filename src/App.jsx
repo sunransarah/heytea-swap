@@ -331,6 +331,9 @@ export default function App() {
   // All of my own active listings
   const myListings = useMemo(() => activeListings.filter(l => l.owner_token === ownerToken), [activeListings, ownerToken]);
 
+  // My own listings for the "Mine" tab — includes expired ones (only gone once the owner deletes them themselves).
+  const myOwnListings = useMemo(() => listings.filter(l => l.active !== false && l.owner_token === ownerToken), [listings, ownerToken]);
+
   const locationReferenceCoords = useMemo(() => {
     if (myLocation) return myLocation;
     const ref = myListings.find(l => l.lat && l.lng);
@@ -1046,14 +1049,14 @@ export default function App() {
                 </div>
 
                 <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>{t.myListings}</div>
-                {myListings.length === 0 ? (
+                {myOwnListings.length === 0 ? (
                   <div style={{ textAlign: "center", padding: 30, color: "#aaa" }}>
                     <div style={{ fontSize: 28, marginBottom: 6 }}>➕</div>
                     <div style={{ fontSize: 13 }}>{t.postCtaSub}</div>
                   </div>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    {myListings.map(l => (
+                    {myOwnListings.map(l => (
                       <div key={l.id}>
                         <ListingCard listing={l} myListings={myListings} expanded onToggle={() => {}} onMessage={() => {}} lang={lang} t={t} />
                         <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
@@ -1260,7 +1263,7 @@ export default function App() {
           { id: "map", icon: "📍", label: t.map },
           { id: "browse", icon: "🔍", label: t.browse },
           { id: "msgs", icon: "💬", label: t.msgs, badge: unreadCount + groupUnreadCount },
-          { id: "post", icon: myListings.length > 0 ? "👤" : "➕", label: myListings.length > 0 ? t.mine : t.post },
+          { id: "post", icon: myOwnListings.length > 0 ? "👤" : "➕", label: myOwnListings.length > 0 ? t.mine : t.post },
         ].map(x => (
           <button key={x.id} onClick={() => { setTab(x.id); setExpandedId(null); if (x.id !== "msgs") { setChatTarget(null); setGroupChatTarget(null); } if (x.id !== "browse") setChatPreviewListing(null); }} style={{
             position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 1,
