@@ -1,6 +1,6 @@
 # Heytea Swap
 
-A Vite + React app for coordinating Heytea World Cup magnet swaps worldwide (mainland China isn't supported yet). Users can post the magnets they have and want, browse nearby listings, filter by available country magnets, message other swappers, and match into 3-person swap rings when a 1-for-1 trade isn't possible.
+A Vite + React app for coordinating Heytea World Cup magnet swaps worldwide. Users can post the magnets they have and want, browse nearby listings, filter by available country magnets, message other swappers, and match into 3-person swap rings when a 1-for-1 trade isn't possible.
 
 ## Tech Stack
 
@@ -66,6 +66,24 @@ To add a new migration, scaffold it so it gets a proper timestamp, then edit it:
 npx supabase migration new some_change
 ```
 
+#### This project's environments
+
+This project has separate dev and prod Supabase projects (see project refs in Supabase Dashboard -> Project Settings, not committed here). The CLI can only be linked to one at a time, so switch before pushing:
+
+```powershell
+npx supabase link --project-ref <dev-project-ref>     # switch to dev
+npx supabase link --project-ref <prod-project-ref>     # switch to prod
+
+npx supabase db push --dry-run                         # always preview first, especially against prod
+npx supabase db push
+```
+
+When done working against prod, switch back to dev so a stray command doesn't hit production by accident:
+
+```powershell
+npx supabase link --project-ref <dev-project-ref>
+```
+
 ### Option B — Supabase Dashboard SQL Editor (no CLI required)
 
 Open `Supabase Dashboard -> SQL Editor -> New query` and run the contents of each file in `supabase/migrations/` **in filename order** (the timestamp prefix is the order). Every migration is written to be safe to re-run (`create table if not exists`, `drop policy if exists` before `create policy`, etc.), so running one twice is a harmless no-op.
@@ -90,7 +108,7 @@ http://127.0.0.1:5173/*
 
 If Vite uses another port, add that port too.
 
-Address search uses the Places library and is global (no country restriction) — except mainland China addresses, which the app explicitly rejects with a "not supported yet" message, since Google Maps is unreliable there. The map falls back to a non-Google map view if Google Maps is unavailable or misconfigured.
+Address search uses the Places library and is global (no country restriction). Note that Google Maps is unreliable in mainland China; the map falls back to a non-Google map view if Google Maps is unavailable or misconfigured.
 
 ## Available Scripts
 
